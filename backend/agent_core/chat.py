@@ -27,13 +27,9 @@ def add_message_to_chat(chat_id: str, message: Dict[str, Any]) -> Dict[str, Any]
     message_id = str(uuid.uuid4())
     created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    # ensure required fields exist (you can adapt or remove these)
-    msg.setdefault("sender_id", msg.get("sender_id"))
-    msg.setdefault("text", msg.get("text"))
-
     # enrich the item
     item = {
-        "message_id": message_id,   # primary key (simple table) or SK if using composite key
+        "message_id": message_id,  
         "chat_id": chat_id,
         "created_at": created_at,
         **msg,
