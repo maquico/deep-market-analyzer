@@ -3,11 +3,12 @@ import boto3
 from langgraph.graph import StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
 from chat import add_message_to_chat
+import json
 
 client = MemoryClient(region_name="us-east-1")
 
@@ -29,7 +30,7 @@ def create_agent(client,
     
     @tool
     def list_events():
-        """Tool used when needed to retrieve recent information""" 
+        """Tool used when needed to retrieve recent information from chat history""" 
         events = client.list_events(
                 memory_id=memory_id,
                 actor_id=actor_id,
@@ -57,19 +58,24 @@ def create_agent(client,
         messages = [SystemMessage(content=system_message)] + non_system_messages
     
         latest_user_message = next((msg.content for msg in reversed(messages) if isinstance(msg, HumanMessage)), None)
-    
+
+        #print("LATEST USER MESSAGE: ", latest_user_message)
         # Get response from model with tools bound
         response = llm_with_tools.invoke(messages)
     
         # Save conversation if applicable
-        if latest_user_message and response.content.strip():  # Check that response has content
+        response_final_content = response.content[0].get("text", "").strip() if response.content else ""
+        #print("RESPONSE CONTENT: ", response.content)
+        if latest_user_message and response_final_content.strip():  # Check that response has content
             conversation = [
                 (latest_user_message, "USER"),
-                (response.content, "ASSISTANT")
+                (response_final_content, "ASSISTANT")
             ]
             
             # Validate that all message texts are non-empty
+            #print("CONVERSATION: ", conversation)
             if all(msg[0].strip() for msg in conversation):  # Ensure no empty messages
+                #print("SAVING CONVERSATION TO AGENTCORE MEMORY: ", conversation)
                 try:
                     client.create_event(
                         memory_id=memory_id,
@@ -114,7 +120,7 @@ def create_agent(client,
     # Compile the graph
     return graph_builder.compile()
 
-def invoke_langgraph_bedrock(payload, agent):
+def invoke_langgraph_agent(payload, agent):
     """
     Invoke the agent with a payload
     """
@@ -126,22 +132,36 @@ def invoke_langgraph_bedrock(payload, agent):
     # Extract the final message content
     return response["messages"][-1].content
 
-app = BedrockAgentCoreApp()
+async def stream_invoke_langgraph_agent(payload, agent):
+    """
+    Stream invoke the agent with a payload
+    """
+    user_input = payload.get("prompt")
+    nodes_to_stream = ["chatbot"]
+    async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)]}):
+        if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:
+            data = event["data"]
+            #print("DATA: ", data)
+            chunk = ""
+            if data["chunk"].content:
+                if data["chunk"].content[0].get("text", None):
+                    chunk = data["chunk"].content[0]["text"]
+                    #print("CHUNK: ", chunk)
 
+            yield json.dumps({"message": chunk})
+
+
+app = BedrockAgentCoreApp()
 
 @app.entrypoint
 async def agent_invocation(payload):
     """Handler for agent invocation"""
+    payload = json.loads(payload) if isinstance(payload, str) else payload
     agent = create_agent(client, memory_id=payload.get("memory_id"), actor_id=payload.get("user_id"), session_id=payload.get("session_id"))
-    user_message = payload.get(
-        "prompt", "No prompt found in input, please guide customer to create a json payload with prompt key"
-    )
-    stream = invoke_langgraph_bedrock(user_message, agent)
-    async for event in stream:
-        print(event)
+    async for event in stream_invoke_langgraph_agent(payload=payload, agent=agent):
         yield (event)
-
 
 if __name__ == "__main__":
     app.run()
         
+
