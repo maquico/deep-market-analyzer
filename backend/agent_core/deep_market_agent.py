@@ -1,18 +1,28 @@
 from bedrock_agentcore import BedrockAgentCoreApp
 import boto3
 from langgraph.graph import StateGraph, MessagesState
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import ToolNode, tools_condition, InjectedState
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langgraph.graph.message import add_messages
+from typing import TypedDict, Annotated
 from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
 from chat import add_message_to_chat
+from tools.gen_img import invoke_via_api_gateway
 import json
 
 client = MemoryClient(region_name="us-east-1")
 
 session = boto3.Session()
+
+class DeepMarketAgentState(TypedDict):
+    # Messages have the type "list". The `add_messages` function
+    # in the annotation defines how this state key should be updated
+    # (in this case, it appends messages to the list, rather than overwriting them)
+    messages: Annotated[list, add_messages]
+    user_id: str
 
 def create_agent(client,
                  memory_id,
@@ -38,17 +48,27 @@ def create_agent(client,
                 max_results=10
             )
         return events
+    
+
+    @tool
+    def generate_image(image_description: str, user_id: str = actor_id):
+        """Tool used to generate an image based on user input about products or services ideas.
+        Use this tool:
+        - If the user explicitly requests an image.
+        - Before generating a report, document, or pdf to include images in it.""" 
+        result = invoke_via_api_gateway(use_case=image_description, user_id=user_id)  
+        return result 
         
     
     # Bind tools to the LLM
-    tools = [list_events]
+    tools = [list_events, generate_image]
     llm_with_tools = llm.bind_tools(tools)
     
     # System message
     system_message = system_message
     
     # Define the chatbot node
-    def chatbot(state: MessagesState):
+    def chatbot(state: DeepMarketAgentState):
         raw_messages = state["messages"]
     
         # Remove any existing system messages to avoid duplicates or misplacement
@@ -101,7 +121,7 @@ def create_agent(client,
         return {"messages": raw_messages + [response]}
     
     # Create the graph
-    graph_builder = StateGraph(MessagesState)
+    graph_builder = StateGraph(DeepMarketAgentState)
     
     # Add nodes
     graph_builder.add_node("chatbot", chatbot)
@@ -125,9 +145,14 @@ def invoke_langgraph_agent(payload, agent):
     Invoke the agent with a payload
     """
     user_input = payload.get("prompt")
+
+    state = {
+        "messages": [HumanMessage(content=user_input)],
+        "user_id": payload.get("user_id", "unknown_user")
+    }
     
     # Create the input in the format expected by LangGraph
-    response = agent.invoke({"messages": [HumanMessage(content=user_input)]})
+    response = agent.invoke(state)
     
     # Extract the final message content
     return response["messages"][-1].content
