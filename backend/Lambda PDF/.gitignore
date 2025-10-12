@@ -1,0 +1,62 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Serverless Framework
+.serverless/
+.serverless_plugins/
+
+# AWS
+.aws/
+
+# Build and deployment
+dist/
+build/
+*.zip
+deploy.zip
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+
+# PDFs generados localmente (si los hay)
+*.pdf
+!example.pdf
+
+# Temporal
+tmp/
+temp/
+.temp/
+
+# Chromium local (puppeteer)
+.local-chromium/

@@ -1,0 +1,56 @@
+service: aws-lambda-html-to-pdf
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  architecture: x86_64
+  memorySize: 1536
+  timeout: 30
+  
+  # Variables de entorno desde .env
+  environment:
+    S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
+  
+  # Permisos IAM para acceder a S3
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:PutObjectAcl
+          Resource:
+            - arn:aws:s3:::${env:S3_BUCKET_NAME}/*
+  
+  # Configuración de API Gateway (ya no necesitamos binary media types porque devolvemos JSON)
+  apiGateway:
+    shouldStartNameWithService: true
+
+functions:
+  generatePdf:
+    handler: handler.handler
+    description: Genera PDFs desde HTML/Markdown/Templates y los sube a S3
+    events:
+      - http:
+          path: generate-pdf
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+package:
+  patterns:
+    - '!**/*'
+    - 'handler.mjs'
+    - 'package.json'
+    - 'node_modules/**'
+    - 'fonts/**'

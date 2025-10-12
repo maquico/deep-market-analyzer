@@ -1,0 +1,119 @@
+service: aws-lambda-image-generation
+frameworkVersion: '4'
+
+# Variables personalizadas
+custom:
+  s3BucketName: ${env:S3_BUCKET_NAME}
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  architecture: x86_64
+  memorySize: 1024  # 1 GB de memoria
+  timeout: 300  # 5 minutos para generación de imágenes
+  
+  # Variables de entorno
+  environment:
+    S3_BUCKET_NAME: ${self:custom.s3BucketName}
+  
+  # Configuración de API Gateway
+  # apiGateway:
+  #   binaryMediaTypes:
+  #     - 'image/png'
+  #     - 'image/jpeg'
+  #     - 'application/json'
+  #     - '*/*'
+  
+  # Permisos IAM para la Lambda
+  iam:
+    role:
+      statements:
+        # Permisos para Amazon Bedrock
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+            - bedrock:InvokeModelWithResponseStream
+          Resource:
+            - arn:aws:bedrock:${self:provider.region}::foundation-model/amazon.nova-canvas-v1:0
+            - arn:aws:bedrock:${self:provider.region}::foundation-model/amazon.nova-pro-v1:0
+        
+        # Permisos para Bedrock Runtime
+        - Effect: Allow
+          Action:
+            - bedrock:Converse
+            - bedrock:ConverseStream
+          Resource: '*'
+        
+        # Permisos para S3
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:PutObjectAcl
+            - s3:GetObject
+          Resource:
+            - arn:aws:s3:::${self:custom.s3BucketName}/*
+        
+        # Permisos para listar el bucket
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::${self:custom.s3BucketName}
+        
+        # Permisos para CloudWatch Logs (ya incluidos por defecto, pero explícitos)
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*
+
+functions:
+  generateImage:
+    handler: handler.lambda_handler
+    description: Genera imágenes usando Amazon Bedrock Nova Canvas basado en casos de uso
+    events:
+      # Endpoint POST para generar imágenes
+      - http:
+          path: generate-image
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Soporte para OPTIONS (pre-flight CORS)
+      - http:
+          path: generate-image
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+package:
+  patterns:
+    - 'handler.py'
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!output_*/**'
+    - '!*.pyc'
+    - '!__pycache__/**'
+    - '!.env'
+    - '!.serverless/**'
+    - '!requirements.txt'
