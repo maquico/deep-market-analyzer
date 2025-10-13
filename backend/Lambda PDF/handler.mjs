@@ -90,9 +90,9 @@ function wrapInHtmlPage(content) {
       </style>
     </head>
     <body>
-      <header class="page-header">Documento generado</header>
+      <header class="page-header">AI Generated Document</header>
       ${content}
-      <footer class="page-footer">Página <span class="pageNumber"></span> de <span class="totalPages"></span></footer>
+
     </body>
     </html>
   `.trim();
