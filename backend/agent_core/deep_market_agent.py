@@ -39,7 +39,7 @@ def create_agent(client,
     )
     
     @tool
-    def list_events():
+    def list_recent_messages():
         """Tool used when needed to retrieve recent information from chat history""" 
         events = client.list_events(
                 memory_id=memory_id,
@@ -47,9 +47,25 @@ def create_agent(client,
                 session_id=session_id,
                 max_results=10
             )
+        #print("EVENTS: ", events)
         return events
     
-
+    @tool
+    def search_chat_history(query: str, memory_id: str = memory_id, actor_id: str = actor_id):
+        """Tool used when needed to retrieve general and important information from chat history. 
+        Formulate the query based on what you want to know about the user""" 
+        
+        memories = client.retrieve_memories(
+                    memory_id=memory_id,
+                    namespace=f"/users/{actor_id}",
+                    query=query
+                )
+        
+        #print("MEMORIES: ", memories)
+        if not memories:
+            memories = "No relevant memories found."
+        return str(memories)
+    
     @tool
     def generate_image(image_description: str, user_id: str = actor_id):
         """Tool used to generate an image based on user input about products or services ideas.
@@ -61,7 +77,7 @@ def create_agent(client,
         
     
     # Bind tools to the LLM
-    tools = [list_events, generate_image]
+    tools = [search_chat_history, list_recent_messages, generate_image]
     llm_with_tools = llm.bind_tools(tools)
     
     # System message
