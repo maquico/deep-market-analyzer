@@ -33,7 +33,7 @@ serverless deploy
 ### Endpoint
 
 ```
-POST https://your-api-gateway-url/generate-pdf
+POST https://e6znu0x2lk.execute-api.us-east-1.amazonaws.com/dev/generate-pdf
 ```
 
 ### Payload

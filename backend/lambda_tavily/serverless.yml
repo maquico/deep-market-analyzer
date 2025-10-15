@@ -1,0 +1,278 @@
+service: aws-lambda-tavily-search
+frameworkVersion: '4'
+
+# Variables personalizadas
+custom:
+  tavilyApiKey: ${env:TAVILY_API_KEY}
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    strip: false
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  architecture: x86_64
+  memorySize: 512  # 512 MB de memoria (suficiente para búsquedas web)
+  timeout: 60  # 1 minuto timeout
+  
+  # Variables de entorno
+  environment:
+    TAVILY_API_KEY: ${self:custom.tavilyApiKey}
+  
+  # Permisos IAM para la Lambda
+  iam:
+    role:
+      statements:
+        # Permisos para CloudWatch Logs
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*
+
+functions:
+  tavilySearch:
+    handler: handler.lambda_handler
+    description: Servicio unificado de búsqueda web con Tavily (search, extract, crawl, map)
+    events:
+      # Endpoint POST para search
+      - http:
+          path: tavily/search
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint OPTIONS para search (CORS preflight)
+      - http:
+          path: tavily/search
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint POST para extract
+      - http:
+          path: tavily/extract
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint OPTIONS para extract
+      - http:
+          path: tavily/extract
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint POST para crawl
+      - http:
+          path: tavily/crawl
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint OPTIONS para crawl
+      - http:
+          path: tavily/crawl
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint POST para map
+      - http:
+          path: tavily/map
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+      
+      # Endpoint OPTIONS para map
+      - http:
+          path: tavily/map
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+# Plugins
+plugins:
+  - serverless-python-requirements
+
+package:
+  patterns:
+    - 'handler.py'
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!.gitignore'
+    - '!*.pyc'
+    - '!__pycache__/**'
+    - '!.env'
+    - '!.serverless/**'
+    - '!venv/**'
+    - '!.venv/**'
+    - '!tests/**'
+    - '!README.md'
+
+# CloudFormation resources adicionales
+resources:
+  Resources:
+    # Respuesta de error 4XX con CORS
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+    
+    # Respuesta de error 5XX con CORS
+    GatewayResponseDefault5XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: 'ApiGatewayRestApi'
+
+  # Outputs útiles después del despliegue
+  Outputs:
+    ApiEndpoint:
+      Description: "API Gateway endpoint URL base"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${sls:stage}
+    
+    SearchEndpoint:
+      Description: "Endpoint para búsqueda web (POST)"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${sls:stage}
+            - '/tavily/search'
+    
+    ExtractEndpoint:
+      Description: "Endpoint para extracción de contenido (POST)"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${sls:stage}
+            - '/tavily/extract'
+    
+    CrawlEndpoint:
+      Description: "Endpoint para crawlear sitios web (POST)"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${sls:stage}
+            - '/tavily/crawl'
+    
+    MapEndpoint:
+      Description: "Endpoint para mapear resultados (POST)"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${sls:stage}
+            - '/tavily/map'
+    
+    TavilySearchFunctionArn:
+      Description: "ARN de la función Lambda Tavily Search"
+      Value:
+        Fn::GetAtt:
+          - TavilySearchLambdaFunction
+          - Arn

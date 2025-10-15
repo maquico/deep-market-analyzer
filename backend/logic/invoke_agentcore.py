@@ -47,15 +47,26 @@ async def invoke_agent(prompt: str,
 if __name__ == "__main__":
     import asyncio
     async def main():
-        test_prompt = "Hola como estas?."
-        generator = invoke_agent(prompt=test_prompt,
-                                session_id="c6a64974-0d21-4991-b324-99d26ca26697",
-                                user_id="angel27",
-                                memory_id="DeepMarketAgentMemory-39N8xi7C7F")
-        async for evt in generator:
-            evt_dict = json.loads(evt)
-            chunk = evt_dict.get("message", "")
-            print(chunk, end="", flush=True)
+        prompts = [#"Hello my name is Angel",
+                   #"My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
+                   #"I want to create a marketing plan to increase brand awareness and drive sales. What strategies should I consider?",
+                   #"I would like to create a disruptive new product to compete with Amazon and Etsy.Mainly on the Europe market as I have already a big public on the US. What ideas do you have?",
+                   "Based on our conversation, what are my main business objectives and target markets and what is my name?"]
+        for prompt in prompts:
+            generator = invoke_agent(prompt=prompt,
+                                    session_id="2853a8e2-2702-4cc4-a022-e1dcb7b813c3",
+                                    user_id="angel27",
+                                    memory_id="DeepMarketAgentMemoryV2-qlkIPd8YnA")
+            async for evt in generator:
+                #print(evt)
+                if isinstance(evt, str):
+                    evt_dict = json.loads(evt)
+                elif isinstance(evt, dict):
+                    evt_dict = evt
+                else:
+                    continue
+                chunk = evt_dict.get("message", "")
+                print(chunk, end="", flush=True)
 
     asyncio.run(main())
     
