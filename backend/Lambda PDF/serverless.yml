@@ -12,11 +12,13 @@ provider:
   # Variables de entorno desde .env
   environment:
     S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
+    DYNAMO_DOCUMENTS_TABLE_NAME: ${env:DYNAMO_DOCUMENTS_TABLE_NAME}
   
-  # Permisos IAM para acceder a S3
+  # Permisos IAM para acceder a S3 y DynamoDB
   iam:
     role:
       statements:
+        # Permisos para S3
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -24,6 +26,16 @@ provider:
             - s3:PutObjectAcl
           Resource:
             - arn:aws:s3:::${env:S3_BUCKET_NAME}/*
+        # Permisos para DynamoDB
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${env:DYNAMO_DOCUMENTS_TABLE_NAME}
   
   # Configuración de API Gateway (ya no necesitamos binary media types porque devolvemos JSON)
   apiGateway:

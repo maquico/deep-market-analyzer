@@ -1,0 +1,72 @@
+service: aws-lambda-backend-fastapi
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  stackName: ${self:service}-${self:provider.stage}
+  
+  # Rol IAM para la función Lambda
+  iam:
+    role:
+      statements:
+        # Permisos para DynamoDB
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-chats
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-chats/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-users
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-users/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-usernames
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-usernames/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-messages
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-messages/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-documents
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-documents/index/*
+        
+        # Permisos para AWS Secrets Manager
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+            - secretsmanager:DescribeSecret
+          Resource:
+            - arn:aws:secretsmanager:${self:provider.region}:*:secret:aws-secret-manager-api-*
+        
+        # Permisos para CloudWatch Logs
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/${self:service}-${self:provider.stage}:*
+
+  ecr:
+    scanOnPush: true
+    images:
+      aws-lambda-backend-fastapi:
+        path: "./"
+
+functions:
+  aws-lambda-backend-fastapi:
+    name: ${self:service}-${self:provider.stage}
+    timeout: 900
+    memorySize: 1024
+    image:
+      name: aws-lambda-backend-fastapi
+    url: true
+    environment:
+      ENVIRONMENT: production
+      AWS_SECRET_NAME: aws-secret-manager-api
+
+resources:
+  Description: "Stack for AWS Lambda Backend FastAPI"
