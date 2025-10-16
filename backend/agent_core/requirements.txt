@@ -3,3 +3,5 @@ boto3
 langgraph
 langchain
 langchain_aws
+langgraph-checkpoint-aws
+python-dotenv
