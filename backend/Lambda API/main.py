@@ -1,12 +1,13 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
 
 app = FastAPI(
     title="Mi API",
     description="API básica con FastAPI",
-    version="1.0.0"
+    version="1.0.0",
+    redirect_slashes=False
 )
 
 # Configuración de CORS

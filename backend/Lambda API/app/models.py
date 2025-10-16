@@ -30,3 +30,16 @@ class Document(BaseModel):
     name: str
     s3_path: str
     uploaded_at: str
+
+class MessageRequest(BaseModel):
+    query: str
+    chat_id: Optional[str] = None
+    user_id: Optional[str] = None
+    chat_name: Optional[str] = 'New Chat'
+
+class MessageResponse(BaseModel):
+    message: str
+    chat_id: str
+    success: bool
+    user_id: Optional[str] = None
+    message_id: Optional[str] = None
