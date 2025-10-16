@@ -13,8 +13,9 @@ from typing import TypedDict, Annotated
 from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
-from backend.agent_core.dynamo_handler import add_message_to_chat
+from dynamo_handler import add_message_to_chat
 from tools.gen_img import invoke_via_api_gateway
+from tools.web_search import tavily_search, tavily_extract
 from dotenv import load_dotenv
 import json
 import uuid
@@ -109,11 +110,33 @@ def create_agent(client,
         - If the user explicitly requests an image.
         - Before generating a report, document, or pdf to include images in it.""" 
         result = invoke_via_api_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
-        return result 
-        
+        return result
     
+    @tool
+    def research_web(query: str):
+        """Tool used to perform web searches to find relevant and recent information about markets, competitors, trends, and more.
+        Use this tool:
+        - If the user asks for recent information or data.
+        - If the user asks for information about competitors, market trends, or specific products/services.
+        - If the user asks for statistics, facts, or figures that may not be in your training data."""
+
+        search_results = tavily_search(query, include_answer=True, max_results=3)
+        return search_results
+    
+    @tool
+    def extract_urls(urls: list):
+        """Tool used to extract and summarize information from a list of URLs.
+        Use this tool:
+        - If the user provides URLs and asks for summaries or insights from them.
+        - If the user asks for detailed information about specific websites or articles you found using the research_web tool."""
+        extraction_results = tavily_extract(urls)
+        return extraction_results
+
     # Bind tools to the LLM
-    tools = [search_chat_history, generate_image]
+    tools = [search_chat_history,
+             generate_image,
+             research_web,
+             extract_urls]
     llm_with_tools = llm.bind_tools(tools)
     
     # System message
@@ -123,11 +146,28 @@ def create_agent(client,
     def chatbot(state: DeepMarketAgentState):
         raw_messages = state["messages"]
     
-        # Remove any existing system messages to avoid duplicates or misplacement
-        non_system_messages = [msg for msg in raw_messages if not isinstance(msg, SystemMessage)]
+        
+        cleaned_messages = []
+        prev_msg = None
+
+        for msg in raw_messages:
+            # Skip SystemMessages entirely (don’t even add them)
+            if isinstance(msg, SystemMessage):
+                continue
+
+            # If the previous message was a ToolMessage and the current one is not an AIMessage,
+            # skip adding the previous ToolMessage
+            if prev_msg and isinstance(prev_msg, ToolMessage) and not isinstance(msg, AIMessage):
+                # Drop prev_msg (i.e., do not add it to cleaned_messages)
+                if cleaned_messages and cleaned_messages[-1] == prev_msg:
+                    cleaned_messages.pop()
+
+            cleaned_messages.append(msg)
+            prev_msg = msg
+
     
         # Always ensure SystemMessage is first
-        messages = [SystemMessage(content=system_message)] + non_system_messages[-6:]  # Limit to last 6 messages for context
+        messages = [SystemMessage(content=system_message)] + cleaned_messages[-6:]  # Limit to last 6 messages for context
     
         # Get response from model with tools bound
         response = llm_with_tools.invoke(messages
@@ -188,7 +228,8 @@ async def stream_invoke_langgraph_agent(payload, agent):
     session_id = payload.get("session_id", "default_session")
     nodes_to_stream = ["chatbot"]
     async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)]},
-                                            config={"configurable": {"actor_id": actor_id, "thread_id": session_id}}):
+                                            config={"recursion_limit": 50,
+                                                    "configurable": {"actor_id": actor_id, "thread_id": session_id}}):
         if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:
             data = event["data"]
             #print("DATA: ", data)
