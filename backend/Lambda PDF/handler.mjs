@@ -4,6 +4,9 @@ import puppeteerCore from "puppeteer-core";
 import { marked } from "marked";
 import Handlebars from "handlebars";
 import { S3Client } from "@aws-sdk/client-s3";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { randomUUID } from "crypto";
 
 /**
  * Entrada esperada (JSON en el body):
@@ -14,16 +17,30 @@ import { S3Client } from "@aws-sdk/client-s3";
  *   "data": { "title": "Factura #123" },
  *   "pdfOptions": { "format": "A4", "margin": { "top":"20mm","bottom":"20mm" } },
  *   "filename": "documento.pdf", // opcional
- *   "user_id": "user123" // opcional, carpeta donde se guardará el PDF
+ *   "user_id": "user123", // opcional, carpeta donde se guardará el PDF
+ *   "chat_id": "chat456" // opcional, ID del chat
  * }
  */
 
 const isLambda = !!process.env.AWS_REGION;
-const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME;
-const AWS_REGION = process.env.AWS_REGION;
 
-// Cliente S3
-const s3Client = new S3Client({ region: AWS_REGION });
+// Función para obtener las variables de entorno (evaluadas en runtime)
+function getEnvVars() {
+  return {
+    S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+    AWS_REGION: process.env.AWS_REGION,
+    DYNAMO_DOCUMENTS_TABLE_NAME: process.env.DYNAMO_DOCUMENTS_TABLE_NAME,
+  };
+}
+
+// Función para obtener clientes de AWS (inicializados en runtime)
+function getAwsClients() {
+  const { AWS_REGION } = getEnvVars();
+  const s3Client = new S3Client({ region: AWS_REGION });
+  const dynamoClient = new DynamoDBClient({ region: AWS_REGION });
+  const docClient = DynamoDBDocumentClient.from(dynamoClient);
+  return { s3Client, docClient };
+}
 
 /**
  * Parsea el payload del evento de API Gateway o invocación directa
@@ -179,11 +196,13 @@ function generateUniqueFilename(filename, userId) {
  * @param {Buffer} pdfBuffer - Buffer del PDF
  * @param {string} filename - Nombre del archivo
  * @param {string} userId - ID del usuario (carpeta donde se guardará)
+ * @param {object} s3Client - Cliente de S3
  * @returns {Promise<object>} Objeto con URL y metadata
  */
-async function uploadPdfToS3AndGetUrl(pdfBuffer, filename, userId) {
+async function uploadPdfToS3AndGetUrl(pdfBuffer, filename, userId, s3Client) {
   const { PutObjectCommand, GetObjectCommand } = await import("@aws-sdk/client-s3");
   const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+  const { S3_BUCKET_NAME, AWS_REGION } = getEnvVars();
   
   const s3Key = generateUniqueFilename(filename, userId);
   
@@ -217,13 +236,49 @@ async function uploadPdfToS3AndGetUrl(pdfBuffer, filename, userId) {
 }
 
 /**
+ * Guarda un registro del documento en DynamoDB
+ * @param {string} s3Key - Clave del documento en S3
+ * @param {string} filename - Nombre del archivo
+ * @param {string} userId - ID del usuario
+ * @param {string} chatId - ID del chat
+ * @param {object} docClient - Cliente de DynamoDB Document
+ * @returns {Promise<string>} ID del documento creado
+ */
+async function saveDocumentToDynamoDB(s3Key, filename, userId, chatId, docClient) {
+  const { DYNAMO_DOCUMENTS_TABLE_NAME } = getEnvVars();
+  const documentId = randomUUID();
+  const uploadedAt = new Date().toISOString();
+  
+  const item = {
+    document_id: documentId,
+    chat_id: chatId || 'unknown',
+    user_id: userId || 'unknown',
+    name: filename || 'document.pdf',
+    s3_path: s3Key,
+    uploaded_at: uploadedAt,
+  };
+
+  const command = new PutCommand({
+    TableName: DYNAMO_DOCUMENTS_TABLE_NAME,
+    Item: item,
+  });
+
+  await docClient.send(command);
+  console.log(`Documento guardado en DynamoDB: ${documentId}`);
+  
+  return documentId;
+}
+
+/**
  * Crea la respuesta exitosa con el presigned URL
  * @param {object} s3Data - Datos de S3 (presignedUrl, s3Key)
  * @param {string} filename - Nombre del archivo
  * @param {number} pdfSize - Tamaño del PDF en bytes
+ * @param {string} documentId - ID del documento guardado en DynamoDB
  * @returns {object} Respuesta formateada
  */
-function createSuccessResponse(s3Data, filename, pdfSize) {
+function createSuccessResponse(s3Data, filename, pdfSize, documentId) {
+  const { S3_BUCKET_NAME } = getEnvVars();
   return {
     statusCode: 200,
     headers: {
@@ -233,6 +288,7 @@ function createSuccessResponse(s3Data, filename, pdfSize) {
     body: JSON.stringify({
       ok: true,
       message: 'PDF generated and uploaded successfully',
+      document_id: documentId,
       filename: filename || 'document.pdf',
       url: s3Data.presignedUrl,
       s3Key: s3Data.s3Key,
@@ -265,7 +321,10 @@ function createErrorResponse(error) {
 export const handler = async (event) => {
   try {
     const payload = parseEventPayload(event);
-    const { html, markdown, template, data, pdfOptions, filename, user_id } = payload;
+    const { html, markdown, template, data, pdfOptions, filename, user_id, chat_id } = payload;
+
+    // Obtener clientes de AWS
+    const { s3Client, docClient } = getAwsClients();
 
     // 1) Construcción del HTML
     console.log('Generando HTML...');
@@ -279,11 +338,15 @@ export const handler = async (event) => {
 
     // 3) Subir a S3 y obtener presigned URL
     console.log('Subiendo PDF a S3...');
-    const s3Data = await uploadPdfToS3AndGetUrl(pdfBuffer, filename, user_id);
+    const s3Data = await uploadPdfToS3AndGetUrl(pdfBuffer, filename, user_id, s3Client);
     console.log(`PDF subido exitosamente: ${s3Data.s3Key}`);
 
-    // 4) Crear respuesta con el presigned URL
-    return createSuccessResponse(s3Data, filename, pdfBuffer.length);
+    // 4) Guardar registro en DynamoDB
+    console.log('Guardando registro en DynamoDB...');
+    const documentId = await saveDocumentToDynamoDB(s3Data.s3Key, filename, user_id, chat_id, docClient);
+
+    // 5) Crear respuesta con el presigned URL y document_id
+    return createSuccessResponse(s3Data, filename, pdfBuffer.length, documentId);
   } catch (err) {
     console.error('Error generando o subiendo PDF:', err);
     return createErrorResponse(err);
