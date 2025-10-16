@@ -93,6 +93,16 @@ def create_agent(client,
                 break
 
         return {"messages": messages}
+
+    @tool
+    def think(thought: str):
+        """Tool used to think and reason about the next steps without producing any user-facing output.
+        Use this tool:
+        - If you need to reason about the user's request or plan your next steps.
+        - If you need to decide which tool to use next.
+        - If you need to clarify your understanding of the user's request.
+        - If you need to summarize information before responding to the user."""
+        return thought
     
     @tool
     def search_chat_history(query: str):
@@ -120,7 +130,7 @@ def create_agent(client,
         - If the user asks for information about competitors, market trends, or specific products/services.
         - If the user asks for statistics, facts, or figures that may not be in your training data."""
 
-        search_results = tavily_search(query, include_answer=True, max_results=3)
+        search_results = tavily_search(query, include_answer=True, max_results=5)
         return search_results
     
     @tool
@@ -131,12 +141,28 @@ def create_agent(client,
         - If the user asks for detailed information about specific websites or articles you found using the research_web tool."""
         extraction_results = tavily_extract(urls)
         return extraction_results
+    
+    @tool
+    def generate_pdf_report(info: str):
+        """Tool used to generate a PDF report based on your last response.
+        Use this tool:
+        - If the user explicitly requests a report or document.
+        - After the image generation tool if images were created.
+        - Fill the info paramter with the content of your last response.
+        - Make sure to include images info along with the rest of the information.
+        """
+
+        print("PDF generation requested with info: ", info)
+        return "PDF generation not implemented yet."
 
     # Bind tools to the LLM
     tools = [search_chat_history,
              generate_image,
              research_web,
-             extract_urls]
+             extract_urls,
+             #generate_pdf_report,
+             #think
+             ]
     llm_with_tools = llm.bind_tools(tools)
     
     # System message

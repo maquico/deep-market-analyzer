@@ -29,6 +29,22 @@ def call_pdf_gateway(data=None, template=template):
     print(resp.text[:500])
     return {"ok": False, "response": resp.text}
 
+def extract_info_from_messages(messages: list) -> str:
+    "Extracts the relevant information from the messages to be included in the report"
+    ...
+
+def generate_images_for_report(info: str) -> list:
+    "generates query and calls image generation tool"
+    ...
+
+def integrate_images_into_info(info: str, images: list) -> dict:
+    "Structured output with images included"
+    ...
+
+def dict_to_html(data: dict) -> str:
+    "Converts the dict data into an HTML string"
+    ...
+
 
 if __name__ == "__main__":
     # Example HTML (you can wrap with wrapInHtmlPage(content))
