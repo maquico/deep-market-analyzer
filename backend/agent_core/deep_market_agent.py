@@ -13,7 +13,7 @@ from typing import TypedDict, Annotated
 from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
-from chat import add_message_to_chat
+from backend.agent_core.dynamo_handler import add_message_to_chat
 from tools.gen_img import invoke_via_api_gateway
 from dotenv import load_dotenv
 import json
@@ -108,7 +108,7 @@ def create_agent(client,
         Use this tool:
         - If the user explicitly requests an image.
         - Before generating a report, document, or pdf to include images in it.""" 
-        result = invoke_via_api_gateway(use_case=image_description, user_id=actor_id)  
+        result = invoke_via_api_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
         return result 
         
     
