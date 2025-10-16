@@ -21,8 +21,7 @@ ERROR_CREATE_CHAT = "Error al crear el chat"
 ERROR_DELETE_CHAT = "Error al eliminar el chat"
 MSG_CHAT_DELETED = "Chat eliminado exitosamente"
 
-
-@router.get("/", response_model=list[Chat], tags=["chats"])
+@router.get("", response_model=list[Chat], tags=["chats"])
 def get_chats():
     """Obtener todos los chats (sin mensajes)"""
     if chats_table is None:

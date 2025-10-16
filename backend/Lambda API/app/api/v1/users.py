@@ -6,7 +6,12 @@ from fastapi import APIRouter, HTTPException
 from app.models import User
 from app.dynamo import (users_table, dynamodb)
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+    dependencies=[],
+    responses={404: {"description": "Not found"}},
+)
 
 # Constantes de mensajes de error
 ERROR_TABLE_NOT_CONFIGURED = "DynamoDB users table name not configured"
@@ -17,7 +22,7 @@ ERROR_DELETE_USER = "Error al eliminar el usuario"
 ERROR_USER_NOT_FOUND = "Usuario no encontrado"
 MSG_USER_DELETED = "Usuario eliminado correctamente"
 
-@router.get("/", tags=["users"])
+@router.get('', tags=["users"])
 async def get_users():
     """Obtener todos los usuarios"""
     if users_table is None:

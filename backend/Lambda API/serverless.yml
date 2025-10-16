@@ -41,6 +41,17 @@ provider:
           Resource:
             - arn:aws:secretsmanager:${self:provider.region}:*:secret:aws-secret-manager-api-*
         
+        # Permisos para Bedrock AgentCore
+        - Effect: Allow
+          Action:
+            - bedrock-agent:InvokeAgent
+            - bedrock-agent:GetAgent
+            - bedrock-agentcore:InvokeAgentRuntime
+          Resource:
+            - arn:aws:bedrock-agentcore:us-east-1:444184706474:runtime/deep_market_agent-IpktmbCDc9
+            - arn:aws:bedrock-agentcore:us-east-1:444184706474:runtime/deep_market_agent-IpktmbCDc9/*
+            - arn:aws:bedrock-agent:us-east-1:444184706474:*
+        
         # Permisos para CloudWatch Logs
         - Effect: Allow
           Action:

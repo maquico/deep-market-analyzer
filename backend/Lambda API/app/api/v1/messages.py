@@ -37,8 +37,7 @@ def get_messages_by_chat(chat_id: str):
         print(f"{ERROR_GET_MESSAGES}: {e}")
         raise HTTPException(status_code=500, detail=ERROR_GET_MESSAGES)
 
-
-@router.post("/", response_model=ChatMessage, tags=["messages"])
+@router.post('', response_model=ChatMessage, tags=["messages"])
 def add_new_message(message: ChatMessage):
     """Crear un nuevo mensaje"""
     if messages_table is None:
