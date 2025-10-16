@@ -35,7 +35,7 @@ async def get_users():
         raise HTTPException(status_code=500, detail=ERROR_GET_USERS)
     
 @router.get("/{user_id}", tags=["users"])
-async def get_user(user_id: int):
+async def get_user(user_id: str):
     """Obtener un usuario por ID"""
     if users_table is None:
         raise HTTPException(status_code=500, detail=ERROR_TABLE_NOT_CONFIGURED)

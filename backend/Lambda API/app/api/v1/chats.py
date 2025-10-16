@@ -1,4 +1,5 @@
 import boto3
+from boto3.dynamodb.conditions import Key
 import os
 import uuid
 import datetime
@@ -52,8 +53,9 @@ def get_chat(chat_id: str):
             if messages_table:
                 msg_response = messages_table.query(
                     IndexName="chat_id-index",
-                    KeyConditionExpression=boto3.dynamodb.conditions.Key('chat_id').eq(chat_id)
+                    KeyConditionExpression=Key('chat_id').eq(chat_id)
                 )
+                print(msg_response.get("Items", []))
                 messages = [ChatMessage(**msg) for msg in msg_response.get("Items", [])]
                 item["messages"] = messages
             return Chat(**item)
@@ -73,7 +75,7 @@ def get_chats_by_user(user_id: str):
     try:
         response = chats_table.query(
             IndexName="user_id-index",
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+            KeyConditionExpression=Key('user_id').eq(user_id)
         )
         chats = []
         for item in response.get("Items", []):
@@ -85,7 +87,7 @@ def get_chats_by_user(user_id: str):
         print(f"{ERROR_GET_CHATS}: {e}")
         raise HTTPException(status_code=500, detail=ERROR_GET_CHATS)
 
-@router.post("/", response_model=Chat, tags=["chats"])
+@router.post("", response_model=Chat, tags=["chats"])
 def create_chat(chat_name: str, user_id: str):
     if chats_table is None:
         raise HTTPException(status_code=500, detail=ERROR_TABLE_NOT_CONFIGURED)
