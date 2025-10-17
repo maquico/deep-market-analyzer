@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/api-client';
 
 export function ApiDebugger() {
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
-  };
+  }, []);
 
-  const testEndpoints = async () => {
+  const testEndpoints = useCallback(async () => {
     setLoading(true);
     setLogs([]);
     
@@ -48,8 +48,9 @@ export function ApiDebugger() {
           body: formData
         });
         addLog(`FormData POST status: ${formResponse.status}`);
-      } catch (error: any) {
-        addLog(`FormData POST error: ${error.message}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addLog(`FormData POST error: ${errorMessage}`);
       }
 
       // Test 5: Try POST with JSON body (different approach)
@@ -71,8 +72,9 @@ export function ApiDebugger() {
           const errorText = await jsonResponse.text();
           addLog(`JSON POST error response: ${errorText.substring(0, 200)}`);
         }
-      } catch (error: any) {
-        addLog(`JSON POST error: ${error.message}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addLog(`JSON POST error: ${errorMessage}`);
       }
 
       // Test 7: Try the new GET endpoint for creating chats
@@ -87,8 +89,9 @@ export function ApiDebugger() {
           const errorText = await getCreateResponse.text();
           addLog(`GET create error response: ${errorText.substring(0, 200)}`);
         }
-      } catch (error: any) {
-        addLog(`GET create error: ${error.message}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addLog(`GET create error: ${errorMessage}`);
       }
       
       // Test 5: Try with axios using new format
@@ -97,11 +100,15 @@ export function ApiDebugger() {
         const axiosResponse = await apiClient.post('/api/v1/chats?chat_name=axiosTest&user_id=debug');
         addLog(`Axios new format success: ${axiosResponse.status}`);
         addLog(`Response data: ${JSON.stringify(axiosResponse.data).substring(0, 200)}`);
-      } catch (error: any) {
-        addLog(`Axios new format error: ${error.message}`);
-        if (error.response) {
-          addLog(`Error status: ${error.response.status}`);
-          addLog(`Error data: ${JSON.stringify(error.response.data)}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addLog(`Axios new format error: ${errorMessage}`);
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { status?: number; data?: unknown } };
+          if (axiosError.response) {
+            addLog(`Error status: ${axiosError.response.status}`);
+            addLog(`Error data: ${JSON.stringify(axiosError.response.data)}`);
+          }
         }
       }
       
@@ -110,11 +117,11 @@ export function ApiDebugger() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addLog]);
 
   useEffect(() => {
     testEndpoints();
-  }, []);
+  }, [testEndpoints]);
 
   return (
     <div className="p-4 bg-gray-100 rounded-lg">

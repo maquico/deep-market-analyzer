@@ -1,19 +1,19 @@
 import { Chat, ChatMessage, UIChat, UIMessage } from '@/lib/types';
 
 /**
- * Convierte un ChatMessage de la API a UIMessage para la interfaz
+ * Converts an API ChatMessage to UIMessage for the interface
  */
 export const apiMessageToUIMessage = (apiMessage: ChatMessage): UIMessage => {
   return {
     id: apiMessage.message_id,
-    role: apiMessage.sender.toLowerCase() as 'user' | 'assistant', // Convertir de MAYÚSCULAS a minúsculas
+    role: apiMessage.sender.toLowerCase() as 'user' | 'assistant', // Convert from UPPERCASE to lowercase
     content: apiMessage.content,
     timestamp: apiMessage.created_at,
   };
 };
 
 /**
- * Convierte un UIMessage a ChatMessage para enviar a la API
+ * Converts a UIMessage to ChatMessage to send to the API
  */
 export const uiMessageToApiMessage = (
   uiMessage: Omit<UIMessage, 'id' | 'timestamp'>,
@@ -21,25 +21,25 @@ export const uiMessageToApiMessage = (
 ): Omit<ChatMessage, 'message_id' | 'created_at'> => {
   return {
     chat_id: chatId,
-    sender: uiMessage.role.toUpperCase() as 'USER' | 'ASSISTANT', // Convertir a MAYÚSCULAS para la API
+    sender: uiMessage.role.toUpperCase() as 'USER' | 'ASSISTANT', // Convert to UPPERCASE for the API
     content: uiMessage.content,
   };
 };
 
 /**
- * Convierte un Chat de la API a UIChat para la interfaz
+ * Converts an API Chat to UIChat for the interface
  */
 export const apiChatToUIChat = (apiChat: Chat): UIChat => {
-  let lastMessage = 'Nuevo chat creado';
+  let lastMessage = 'New chat created';
   
   if (apiChat.messages && apiChat.messages.length > 0) {
-    // Ordenar mensajes por fecha y tomar el último
+    // Sort messages by date and take the last one
     const sortedMessages = apiChat.messages.sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
     const lastMsg = sortedMessages[sortedMessages.length - 1];
     
-    // Mostrar un preview más descriptivo
+    // Show a more descriptive preview
     if (lastMsg.sender === 'USER') {
       lastMessage = `You: ${lastMsg.content}`;
     } else {
@@ -56,7 +56,7 @@ export const apiChatToUIChat = (apiChat: Chat): UIChat => {
 };
 
 /**
- * Trunca texto a una longitud específica
+ * Truncates text to a specific length
  */
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
@@ -64,17 +64,17 @@ export const truncateText = (text: string, maxLength: number): string => {
 };
 
 /**
- * Formatea timestamp para mostrar en la UI
+ * Formats timestamp for UI display
  */
 export const formatTimestamp = (timestamp: string): string => {
-  if (!timestamp) return 'Ahora';
+  if (!timestamp) return 'Now';
 
   try {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-    if (diffInMinutes < 1) return 'Ahora';
+    if (diffInMinutes < 1) return 'Now';
     if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
     
     const diffInHours = Math.floor(diffInMinutes / 60);
@@ -85,29 +85,29 @@ export const formatTimestamp = (timestamp: string): string => {
     
     return date.toLocaleDateString();
   } catch {
-    return 'Fecha inválida';
+    return 'Invalid date';
   }
 };
 
 /**
- * Genera un nombre automático para un chat basado en el primer mensaje
+ * Generates an automatic name for a chat based on the first message
  */
 export const generateChatName = (firstMessage: string): string => {
   const maxLength = 40;
   let name = firstMessage.trim();
   
-  // Si el mensaje es muy corto, agregar prefijo descriptivo
+  // If the message is too short, add descriptive prefix
   if (name.length < 10) {
-    name = `Análisis: ${name}`;
+    name = `Analysis: ${name}`;
   }
   
-  // Remover caracteres especiales pero mantener espacios y puntos
+  // Remove special characters but keep spaces and dots
   name = name.replace(/[^\w\s.,-]/gi, '');
   
-  // Truncar si es muy largo
+  // Truncate if too long
   if (name.length > maxLength) {
     name = name.substring(0, maxLength);
-    // Cortar en la última palabra completa
+    // Cut at the last complete word
     const lastSpace = name.lastIndexOf(' ');
     if (lastSpace > 15) {
       name = name.substring(0, lastSpace);
@@ -115,8 +115,8 @@ export const generateChatName = (firstMessage: string): string => {
     name += '...';
   }
   
-  // Capitalizar primera letra
+  // Capitalize first letter
   name = name.charAt(0).toUpperCase() + name.slice(1);
   
-  return name || 'Nuevo análisis';
+  return name || 'New analysis';
 };

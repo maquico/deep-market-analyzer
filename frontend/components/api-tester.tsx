@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { API_CONFIG, chatsService, messagesService, chatAgentService } from "@/lib/services"
 
 export function ApiTester() {
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<{description: string; response: unknown} | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [chatId, setChatId] = useState("")
@@ -18,7 +18,7 @@ export function ApiTester() {
 
   const userId = API_CONFIG.DEFAULT_USER_ID
 
-  const handleTest = async (testFunction: () => Promise<any>, description: string) => {
+  const handleTest = async (testFunction: () => Promise<unknown>, description: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -26,8 +26,8 @@ export function ApiTester() {
       const response = await testFunction()
       setResult({ description, response })
       console.log(`Success:`, response)
-    } catch (err: any) {
-      const errorMessage = err.message || 'Unknown error'
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       setError(`${description}: ${errorMessage}`)
       console.error(`Error in ${description}:`, err)
     } finally {

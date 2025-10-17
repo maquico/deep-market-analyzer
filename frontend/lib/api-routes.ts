@@ -1,10 +1,10 @@
 /**
- * Constantes para las rutas de la API del backend
- * Esto ayuda a mantener consistencia entre el frontend y backend
+ * Constants for backend API routes
+ * This helps maintain consistency between frontend and backend
  */
 
 export const API_ROUTES = {
-  // Rutas de chats
+  // Chat routes
   CHATS: {
     BASE: '/api/v1/chats',
     GET_ALL: '/api/v1/chats',
@@ -14,14 +14,14 @@ export const API_ROUTES = {
     DELETE: (chatId: string) => `/api/v1/chats/${chatId}`,
   },
 
-  // Rutas de mensajes
+  // Message routes
   MESSAGES: {
     BASE: '/api/v1/messages',
     GET_BY_CHAT: (chatId: string) => `/api/v1/messages/chat/${chatId}`,
     CREATE: '/api/v1/messages',
   },
 
-  // Rutas de documentos
+  // Document routes
   DOCUMENTS: {
     BASE: '/api/v1/documents',
     GET_BY_CHAT: (chatId: string) => `/api/v1/documents/chat/${chatId}`,
@@ -29,13 +29,13 @@ export const API_ROUTES = {
     GET_BY_ID: (documentId: string) => `/api/v1/documents/${documentId}`,
   },
 
-  // Rutas del agente
+  // Agent routes
   AGENT: {
     BASE: '/api/v1/agent',
     MESSAGE_WITH_BOT: '/api/v1/agent/message_with_bot',
   },
 
-  // Rutas de usuarios
+  // User routes
   USERS: {
     BASE: '/api/v1/users',
     GET_ALL: '/api/v1/users',

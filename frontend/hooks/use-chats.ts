@@ -25,14 +25,14 @@ export const useChats = () => {
   const userId = API_CONFIG.DEFAULT_USER_ID;
 
   /**
-   * Limpiar mensajes temporales
+   * Clear temporary messages
    */
   const clearTemporaryMessages = useCallback(() => {
     setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
   }, []);
 
   /**
-   * Cargar todos los chats del usuario
+   * Load all user chats
    */
   const loadChats = useCallback(async () => {
     try {
@@ -44,12 +44,12 @@ export const useChats = () => {
       
       setChats(uiChats);
       
-      // Si no hay chat activo y hay chats disponibles, seleccionar el primero
+      // If there's no active chat and chats are available, select the first one
       if (!activeChat && uiChats.length > 0) {
         setActiveChat(uiChats[0].id);
       }
     } catch (err: any) {
-      setError(err.message || 'Error al cargar los chats');
+      setError(err.message || 'Error loading chats');
       console.error('Error loading chats:', err);
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ export const useChats = () => {
   }, [userId, activeChat]);
 
   /**
-   * Cargar mensajes de un chat específico
+   * Load messages from a specific chat
    */
   const loadMessages = useCallback(async (chatId: string) => {
     try {
@@ -66,17 +66,17 @@ export const useChats = () => {
 
       const apiMessages = await messagesService.getMessagesByChat(chatId);
       
-      // Ordenar por fecha de creación
+      // Sort by creation date
       const sortedMessages = apiMessages.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       
       const uiMessages = sortedMessages.map(apiMessageToUIMessage);
       
-      // Reemplazar TODOS los mensajes
+      // Replace ALL messages
       setMessages(uiMessages);
     } catch (err: any) {
-      setError(err.message || 'Error al cargar los mensajes');
+      setError(err.message || 'Error loading messages');
       console.error('❌ Error loading messages:', err);
     } finally {
       setLoading(false);
@@ -84,14 +84,14 @@ export const useChats = () => {
   }, []);
 
   /**
-   * Crear un nuevo chat
+   * Create a new chat
    */
   const createNewChat = useCallback(async (chatName?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const finalChatName = chatName || 'Nuevo análisis';
+      const finalChatName = chatName || 'New analysis';
       const newChat = await chatsService.createChat(finalChatName, userId);
       const uiChat = apiChatToUIChat(newChat);
 
@@ -102,7 +102,7 @@ export const useChats = () => {
       
       return newChat.chat_id;
     } catch (err: any) {
-      setError(err.message || 'Error al crear el chat');
+      setError(err.message || 'Error creating chat');
       console.error('Error creating chat:', err);
       throw err;
     } finally {
@@ -111,7 +111,7 @@ export const useChats = () => {
   }, [userId]);
 
   /**
-   * Enviar un mensaje - SIN mensajes temporales para evitar duplicaciones
+   * Send a message - WITHOUT temporary messages to avoid duplications
    */
   const sendMessage = useCallback(async (content: string, chatId: string) => {
     try {
@@ -120,26 +120,26 @@ export const useChats = () => {
 
 
 
-      // Usar el servicio de chat-agent que maneja todo el flujo
+      // Use the chat-agent service that handles the entire flow
       const agentResponse = await chatAgentService.sendMessage(
         content, 
         userId, 
         chatId,
-        chats.find(chat => chat.id === chatId)?.name || 'Análisis'
+        chats.find(chat => chat.id === chatId)?.name || 'Analysis'
       );
 
 
 
-      // Recargar mensajes directamente desde el backend
+      // Reload messages directly from the backend
       await loadMessages(chatId);
       
-      // Recargar la lista de chats para actualizar el último mensaje
+      // Reload the chat list to update the last message
       await loadChats();
 
 
 
     } catch (err: any) {
-      setError(err.message || 'Error al enviar el mensaje');
+      setError(err.message || 'Error sending message');
       console.error('❌ Error sending message:', err);
       throw err;
     } finally {
@@ -148,7 +148,7 @@ export const useChats = () => {
   }, [userId, chats, loadChats, loadMessages]);
 
   /**
-   * Eliminar un chat
+   * Delete a chat
    */
   const deleteChat = useCallback(async (chatId: string) => {
     try {
@@ -159,7 +159,7 @@ export const useChats = () => {
       
       setChats(prev => prev.filter(chat => chat.id !== chatId));
       
-      // Si era el chat activo, seleccionar otro
+      // If it was the active chat, select another one
       if (activeChat === chatId) {
         const remainingChats = chats.filter(chat => chat.id !== chatId);
         if (remainingChats.length > 0) {
@@ -170,7 +170,7 @@ export const useChats = () => {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Error al eliminar el chat');
+      setError(err.message || 'Error deleting chat');
       console.error('Error deleting chat:', err);
       throw err;
     } finally {
@@ -179,19 +179,19 @@ export const useChats = () => {
   }, [activeChat, chats]);
 
   /**
-   * Cambiar el chat activo
+   * Switch to active chat
    */
   const switchToChat = useCallback((chatId: string) => {
     setActiveChat(chatId);
     loadMessages(chatId);
   }, [loadMessages]);
 
-  // Cargar chats al montar el componente
+  // Load chats when component mounts
   useEffect(() => {
     loadChats();
   }, [loadChats]);
 
-  // Cargar mensajes cuando cambia el chat activo
+  // Load messages when active chat changes
   useEffect(() => {
     if (activeChat) {
       loadMessages(activeChat);
@@ -199,7 +199,7 @@ export const useChats = () => {
   }, [activeChat, loadMessages]);
 
   return {
-    // Estado
+    // State
     chats,
     activeChat,
     messages,
@@ -207,7 +207,7 @@ export const useChats = () => {
     sending,
     error,
     
-    // Acciones
+    // Actions
     createNewChat,
     sendMessage,
     deleteChat,

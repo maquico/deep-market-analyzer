@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Link from "next/link"
 import { useChats } from "@/hooks/use-chats"
-import { UIMessage, UIChat } from "@/lib/services"
 
 export function ChatInterface() {
   const {
@@ -37,7 +36,7 @@ export function ChatInterface() {
   const handleSendMessage = useCallback(async () => {
     if (!inputMessage.trim() || sending) return;
 
-    // Si no hay chat activo, guardar mensaje y abrir dialog para crear uno nuevo
+    // If there's no active chat, save message and open dialog to create a new one
     if (!activeChat) {
       setPendingMessage(inputMessage);
       setNewChatName("");
@@ -47,7 +46,7 @@ export function ChatInterface() {
 
     try {
       const messageToSend = inputMessage;
-      setInputMessage(""); // Limpiar input inmediatamente
+      setInputMessage(""); // Clear input immediately
 
       await sendMessage(messageToSend, activeChat);
     } catch (error) {
@@ -68,9 +67,9 @@ export function ChatInterface() {
       setIsCreateChatDialogOpen(false);
       setNewChatName("");
       
-      // Si hay un mensaje pendiente, enviarlo al nuevo chat
+      // If there's a pending message, send it to the new chat
       if (pendingMessage.trim()) {
-        setInputMessage(""); // Limpiar input
+        setInputMessage(""); // Clear input
         await sendMessage(pendingMessage, chatId);
         setPendingMessage("");
       }
@@ -136,7 +135,7 @@ export function ChatInterface() {
                     Give your analysis session a descriptive name to help identify it later.
                     {pendingMessage && (
                       <span className="block mt-2 text-sm font-medium text-foreground">
-                        Your message: "{pendingMessage.substring(0, 50)}{pendingMessage.length > 50 ? '...' : ''}"
+                        Your message: &ldquo;{pendingMessage.substring(0, 50)}{pendingMessage.length > 50 ? '...' : ''}&rdquo;
                       </span>
                     )}
                   </DialogDescription>
@@ -306,14 +305,14 @@ export function ChatInterface() {
               ) : (
                 messages.map((message) => (
                   <div key={message.id} className={`flex items-start gap-3 w-full ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {/* Avatar para Assistant (izquierda) */}
+                    {/* Avatar for Assistant (left) */}
                     {message.role === "assistant" && (
                       <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0 mt-1">
                         <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       </div>
                     )}
                     
-                    {/* Contenedor del mensaje */}
+                    {/* Message container */}
                     <div className={`relative max-w-[75%] md:max-w-[70%] ${message.role === "user" ? "order-1" : ""}`}>
                       <div
                         className={`rounded-lg p-3 ${
@@ -336,7 +335,7 @@ export function ChatInterface() {
                         )}
                       </div>
                       
-                      {/* Etiqueta en la esquina inferior derecha */}
+                      {/* Label in the bottom right corner */}
                       <div className={`flex justify-end mt-1 ${message.role === "user" ? "mr-1" : "ml-1"}`}>
                         <span className="text-xs text-muted-foreground">
                           {message.role === "user" ? "You" : "AI Assistant"}
@@ -344,7 +343,7 @@ export function ChatInterface() {
                       </div>
                     </div>
 
-                    {/* Avatar para User (derecha) */}
+                    {/* Avatar for User (right) */}
                     {message.role === "user" && (
                       <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-1 order-2">
                         <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />

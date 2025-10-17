@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { API_CONFIG, DEFAULT_HEADERS, ApiError } from './api-config';
 
-// Crear instancia de axios para la API principal
+// Create axios instance for the main API
 export const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
   headers: DEFAULT_HEADERS,
 });
 
-// Crear instancia de axios para el chat agent
+// Create axios instance for the chat agent
 export const chatAgentClient = axios.create({
   baseURL: API_CONFIG.CHAT_AGENT_URL,
   timeout: API_CONFIG.TIMEOUT,

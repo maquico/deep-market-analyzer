@@ -1,13 +1,13 @@
-// Exportar todos los servicios de la API
+// Export all API services
 export { chatsService } from './chats';
 export { messagesService } from './messages';
 export { chatAgentService } from './chat-agent';
 export { documentsService } from './documents';
 
-// Exportar clientes de API
+// Export API clients
 export { apiClient, chatAgentClient } from '../api-client';
 
-// Re-exportar tipos y configuración útiles
+// Re-export useful types and configuration
 export { API_CONFIG, ApiError } from '../api-config';
 export { API_ROUTES } from '../api-routes';
 export type * from '../types';
