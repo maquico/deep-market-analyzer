@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Configuración de la API
+// API Configuration
 export const API_CONFIG = {
   BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
   CHAT_AGENT_URL: process.env.NEXT_PUBLIC_CHAT_AGENT_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '',
@@ -8,7 +8,7 @@ export const API_CONFIG = {
   TIMEOUT: 30000,
 };
 
-// Instancia de axios para la API principal
+// Axios instance for the main API
 export const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
@@ -18,7 +18,7 @@ export const api = axios.create({
   },
 });
 
-// Función para manejar errores de la API
+// Function to handle API errors
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -30,7 +30,7 @@ export class ApiError extends Error {
   }
 }
 
-// Interceptor para manejar errores de respuesta
+// Interceptor to handle response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -40,20 +40,20 @@ api.interceptors.response.use(
       const errorData = error.response?.data;
       errorMessage = errorData?.detail || errorData?.message || errorMessage;
     } catch {
-      // Si no se puede parsear el error, usar el mensaje por defecto
+      // If the error cannot be parsed, use the default message
     }
     
     throw new ApiError(errorMessage, error.response?.status, error.response?.data);
   }
 );
 
-// Headers por defecto (mantenido para compatibilidad)
+// Default headers (maintained for compatibility)
 export const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
 };
 
-// Función para crear URLs de la API (mantenida para compatibilidad)
+// Function to create API URLs (maintained for compatibility)
 export const createApiUrl = (endpoint: string): string => {
   const baseUrl = API_CONFIG.BASE_URL.replace(/\/$/, '');
   const cleanEndpoint = endpoint.replace(/^\//, '');

@@ -4,7 +4,7 @@ import { API_ROUTES } from '@/lib/api-routes';
 
 export const chatsService = {
   /**
-   * Obtener todos los chats de un usuario
+   * Get all chats from a user
    */
   getChatsByUser: async (userId: string): Promise<Chat[]> => {
     const response = await apiClient.get<Chat[]>(API_ROUTES.CHATS.GET_BY_USER(userId));
@@ -12,7 +12,7 @@ export const chatsService = {
   },
 
   /**
-   * Obtener un chat específico por ID (incluye mensajes)
+   * Get a specific chat by ID (includes messages)
    */
   getChatById: async (chatId: string): Promise<Chat> => {
     const response = await apiClient.get<Chat>(API_ROUTES.CHATS.GET_BY_ID(chatId));
@@ -20,7 +20,7 @@ export const chatsService = {
   },
 
   /**
-   * Crear un nuevo chat
+   * Create a new chat
    */
   createChat: async (chatName: string, userId: string): Promise<Chat> => {
     console.log('Creating chat with:', { chatName, userId });
@@ -38,7 +38,7 @@ export const chatsService = {
   },
 
   /**
-   * Eliminar un chat
+   * Delete a chat
    */
   deleteChat: async (chatId: string): Promise<{ message: string }> => {
     const response = await apiClient.delete<{ message: string }>(API_ROUTES.CHATS.DELETE(chatId));

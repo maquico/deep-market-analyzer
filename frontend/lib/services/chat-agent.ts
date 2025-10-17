@@ -3,9 +3,9 @@ import { ChatResponse } from '@/lib/types';
 import { API_CONFIG, ApiError } from '@/lib/api-config';
 import { API_ROUTES } from '@/lib/api-routes';
 
-// Crear una instancia de axios para el chat agent
+// Create an axios instance for the chat agent
 const chatAgentApi = axios.create({
-  baseURL: API_CONFIG.BASE_URL, // Usar la misma URL base que el resto de la API
+  baseURL: API_CONFIG.BASE_URL, // Use the same base URL as the rest of the API
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
@@ -13,7 +13,7 @@ const chatAgentApi = axios.create({
   },
 });
 
-// Interceptor para manejar errores de respuesta
+// Interceptor to handle response errors
 chatAgentApi.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -24,7 +24,7 @@ chatAgentApi.interceptors.response.use(
 
 export const chatAgentService = {
   /**
-   * Envía un mensaje al chatbot/agente usando el endpoint /api/v1/agent/message_with_bot
+   * Send a message to the chatbot/agent using the /api/v1/agent/message_with_bot endpoint
    */
   sendMessage: async (
     question: string,
@@ -43,13 +43,13 @@ export const chatAgentService = {
     
 
     
-    // Transformar la respuesta del backend al formato esperado por el frontend
+    // Transform the backend response to the format expected by the frontend
     return {
       answer: response.data.message,
       session_id: response.data.chat_id,
       user_id: response.data.user_id,
       metadata: {
-        has_document: false, // Agregar lógica si necesitas detectar documentos
+        has_document: false, // Add logic if you need to detect documents
       },
     };
   },

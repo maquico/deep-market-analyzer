@@ -1,9 +1,9 @@
-// Types para la API del backend
+// Types for the backend API
 export interface ChatMessage {
   message_id: string;
   chat_id: string;
   created_at: string;
-  sender: 'USER' | 'ASSISTANT'; // Coincide con el backend que usa mayúsculas
+  sender: 'USER' | 'ASSISTANT'; // Matches the backend that uses uppercase
   content: string;
 }
 
@@ -31,7 +31,7 @@ export interface Document {
   uploaded_at: string;
 }
 
-// Types para el chat agent - Basado en el endpoint /api/v1/agent/message_with_bot
+// Types for the chat agent - Based on the /api/v1/agent/message_with_bot endpoint
 export interface MessageRequest {
   query: string;
   user_id: string;
@@ -61,7 +61,7 @@ export interface ChatResponse {
   metadata?: Record<string, unknown>;
 }
 
-// Types para el UI local
+// Types for the local UI
 export interface UIMessage {
   id: string;
   role: 'user' | 'assistant';

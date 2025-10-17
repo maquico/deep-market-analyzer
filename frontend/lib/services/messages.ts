@@ -4,7 +4,7 @@ import { API_ROUTES } from '@/lib/api-routes';
 
 export const messagesService = {
   /**
-   * Obtener todos los mensajes de un chat
+   * Get all messages from a chat
    */
   getMessagesByChat: async (chatId: string): Promise<ChatMessage[]> => {
     const response = await apiClient.get<ChatMessage[]>(API_ROUTES.MESSAGES.GET_BY_CHAT(chatId));
@@ -12,7 +12,7 @@ export const messagesService = {
   },
 
   /**
-   * Crear un nuevo mensaje
+   * Create a new message
    */
   addMessage: async (message: Omit<ChatMessage, 'message_id' | 'created_at'>): Promise<ChatMessage> => {
     const response = await apiClient.post<ChatMessage>(API_ROUTES.MESSAGES.CREATE, message);
