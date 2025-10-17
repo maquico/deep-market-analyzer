@@ -1,139 +1,97 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Plus, Send, MoreVertical, Edit2, Trash2, Download, TrendingUp, History, Menu, X } from "lucide-react"
+import { Search, Plus, Send, MoreVertical, Edit2, Trash2, Download, TrendingUp, History, Menu, X, AlertCircle, Bot, User } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Link from "next/link"
-
-interface Message {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  hasDownload?: boolean
-}
-
-interface Chat {
-  id: string
-  name: string
-  lastMessage: string
-  timestamp: string
-}
+import { useChats } from "@/hooks/use-chats"
+import { UIMessage, UIChat } from "@/lib/services"
 
 export function ChatInterface() {
-  const idCounter = useRef(1000)
-  
-  const generateId = useCallback(() => {
-    idCounter.current += 1
-    return idCounter.current.toString()
-  }, [])
+  const {
+    chats,
+    activeChat,
+    messages,
+    loading,
+    sending,
+    error,
+    createNewChat,
+    sendMessage,
+    deleteChat,
+    switchToChat,
+    clearError,
+  } = useChats();
 
-  const [chats, setChats] = useState<Chat[]>([
-    {
-      id: "1",
-      name: "Nike vs Adidas Analysis",
-      lastMessage: "Marketing strategy comparison...",
-      timestamp: "2 hours ago",
-    },
-    {
-      id: "2",
-      name: "Coca-Cola Competition",
-      lastMessage: "Market research completed",
-      timestamp: "Yesterday",
-    },
-    {
-      id: "3",
-      name: "Technology Sector",
-      lastMessage: "Trend analysis...",
-      timestamp: "3 days ago",
-    },
-  ])
+  const [searchQuery, setSearchQuery] = useState("");
+  const [inputMessage, setInputMessage] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isCreateChatDialogOpen, setIsCreateChatDialogOpen] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
+  const [pendingMessage, setPendingMessage] = useState("");
 
-  const [activeChat, setActiveChat] = useState("1")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [inputMessage, setInputMessage] = useState("")
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "Hello! I'm your competitive analysis agent. Tell me about your company to start the research.",
-    },
-    {
-      id: "2",
-      role: "user",
-      content:
-        "I want to analyze my sports footwear company. We focus on running and have presence in Latin America.",
-    },
-    {
-      id: "3",
-      role: "assistant",
-      content:
-        "Perfect. I've researched the sports footwear market context in Latin America. Found data on consumption trends, fitness sector growth, and main competitors. Which specific competitor would you like to compare yourself with?",
-    },
-    {
-      id: "4",
-      role: "user",
-      content: "I would like to compare myself with Nike",
-    },
-    {
-      id: "5",
-      role: "assistant",
-      content:
-        "Excellent choice. I've completed an in-depth analysis of Nike including:\n\n• Marketing strategies and positioning\n• Presence in Latin American markets\n• Product innovation\n• Distribution channels\n• Price analysis\n\nWould you like a general overview or prefer to focus on a specific area like marketing, products, or distribution?",
-      hasDownload: true,
-    },
-  ])
+  const handleSendMessage = useCallback(async () => {
+    if (!inputMessage.trim() || sending) return;
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-
-  const handleSendMessage = useCallback(() => {
-    if (!inputMessage.trim()) return
-
-    const newMessage: Message = {
-      id: generateId(),
-      role: "user",
-      content: inputMessage,
+    // Si no hay chat activo, guardar mensaje y abrir dialog para crear uno nuevo
+    if (!activeChat) {
+      setPendingMessage(inputMessage);
+      setNewChatName("");
+      setIsCreateChatDialogOpen(true);
+      return;
     }
 
-    setMessages([...messages, newMessage])
-    setInputMessage("")
+    try {
+      const messageToSend = inputMessage;
+      setInputMessage(""); // Limpiar input inmediatamente
 
-    // Simulate assistant response
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "assistant",
-          content: "Processing your request...",
-        },
-      ])
-    }, 1000)
-  }, [inputMessage, messages, generateId])
+      await sendMessage(messageToSend, activeChat);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  }, [inputMessage, sending, activeChat, sendMessage]);
 
   const handleNewChat = useCallback(() => {
-    const newChat: Chat = {
-      id: generateId(),
-      name: "New analysis",
-      lastMessage: "Chat started",
-      timestamp: "Now",
-    }
-    setChats([newChat, ...chats])
-    setActiveChat(newChat.id)
-    setMessages([
-      {
-        id: "1",
-        role: "assistant",
-        content:
-          "Hello! I'm your competitive analysis agent. Tell me about your company to start the research.",
-      },
-    ])
-  }, [chats, generateId])
+    setNewChatName("");
+    setIsCreateChatDialogOpen(true);
+  }, []);
 
-  const filteredChats = chats.filter((chat) => chat.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const handleCreateChatConfirm = useCallback(async () => {
+    if (!newChatName.trim()) return;
+    
+    try {
+      const chatId = await createNewChat(newChatName);
+      setIsCreateChatDialogOpen(false);
+      setNewChatName("");
+      
+      // Si hay un mensaje pendiente, enviarlo al nuevo chat
+      if (pendingMessage.trim()) {
+        setInputMessage(""); // Limpiar input
+        await sendMessage(pendingMessage, chatId);
+        setPendingMessage("");
+      }
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+    }
+  }, [createNewChat, newChatName, pendingMessage, sendMessage]);
+
+  const handleDeleteChat = useCallback(async (chatId: string) => {
+    try {
+      await deleteChat(chatId);
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+    }
+  }, [deleteChat]);
+
+  const filteredChats = chats.filter((chat) => 
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const currentChat = chats.find(chat => chat.id === activeChat);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -160,10 +118,51 @@ export function ChatInterface() {
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <Button onClick={handleNewChat} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              New Analysis
-            </Button>
+            <Dialog open={isCreateChatDialogOpen} onOpenChange={setIsCreateChatDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  onClick={handleNewChat} 
+                  disabled={loading}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Analysis
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Create New Analysis</DialogTitle>
+                  <DialogDescription>
+                    Give your analysis session a descriptive name to help identify it later.
+                    {pendingMessage && (
+                      <span className="block mt-2 text-sm font-medium text-foreground">
+                        Your message: "{pendingMessage.substring(0, 50)}{pendingMessage.length > 50 ? '...' : ''}"
+                      </span>
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Input
+                    placeholder="e.g., Tech Startup Competitive Analysis"
+                    value={newChatName}
+                    onChange={(e) => setNewChatName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateChatConfirm()}
+                    autoFocus
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => {
+                    setIsCreateChatDialogOpen(false);
+                    setPendingMessage("");
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateChatConfirm} disabled={!newChatName.trim()}>
+                    Create Analysis
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Search */}
@@ -189,47 +188,83 @@ export function ChatInterface() {
             </Link>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {error}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearError}
+                    className="ml-2 h-auto p-0 text-xs underline"
+                  >
+                    Dismiss
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           {/* Chat List */}
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-2">
-              {filteredChats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`group p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
-                    activeChat === chat.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
-                  }`}
-                  onClick={() => setActiveChat(chat.id)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm text-sidebar-foreground truncate">{chat.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate mt-1">{chat.lastMessage}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{chat.timestamp}</p>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border-border">
-                        <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+              {loading && chats.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">
+                  Loading chats...
                 </div>
-              ))}
+              ) : filteredChats.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">
+                  {searchQuery ? 'No chats found' : 'No chats yet. Create your first analysis!'}
+                </div>
+              ) : (
+                filteredChats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`group p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
+                      activeChat === chat.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
+                    }`}
+                    onClick={() => switchToChat(chat.id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm text-sidebar-foreground truncate">{chat.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate mt-1">{chat.lastMessage}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{chat.timestamp}</p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover border-border">
+                          <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChat(chat.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -253,7 +288,7 @@ export function ChatInterface() {
               <Menu className="w-5 h-5" />
             </Button>
             <h2 className="font-semibold text-lg text-card-foreground truncate">
-              {chats.find((c) => c.id === activeChat)?.name}
+              {currentChat?.name || 'Deep Market Analyzer'}
             </h2>
           </div>
         </div>
@@ -262,29 +297,83 @@ export function ChatInterface() {
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-4 md:p-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] md:max-w-[80%] rounded-lg p-4 ${
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card text-card-foreground border border-border"
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
-                    {message.hasDownload && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 bg-background/50 hover:bg-background border-border"
+              {messages.length === 0 && !loading ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Welcome to Deep Market Analyzer</h3>
+                  <p>Start by telling me about your company to begin the competitive analysis.</p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div key={message.id} className={`flex items-start gap-3 w-full ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {/* Avatar para Assistant (izquierda) */}
+                    {message.role === "assistant" && (
+                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                    )}
+                    
+                    {/* Contenedor del mensaje */}
+                    <div className={`relative max-w-[75%] md:max-w-[70%] ${message.role === "user" ? "order-1" : ""}`}>
+                      <div
+                        className={`rounded-lg p-3 ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground ml-auto"
+                            : "bg-card text-card-foreground border border-border"
+                        }`}
                       >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Research (PDF)
-                      </Button>
+                        <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
+                        
+                        {message.hasDownload && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3 bg-background/50 hover:bg-background border-border"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Research (PDF)
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* Etiqueta en la esquina inferior derecha */}
+                      <div className={`flex justify-end mt-1 ${message.role === "user" ? "mr-1" : "ml-1"}`}>
+                        <span className="text-xs text-muted-foreground">
+                          {message.role === "user" ? "You" : "AI Assistant"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Avatar para User (derecha) */}
+                    {message.role === "user" && (
+                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-1 order-2">
+                        <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      </div>
                     )}
                   </div>
+                ))
+              )}
+              
+              {sending && (
+                <div className="flex items-start gap-3 w-full justify-start">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="max-w-[75%] md:max-w-[70%]">
+                    <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <span className="text-sm text-muted-foreground ml-2">Analyzing your request...</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-1 ml-1">
+                      <span className="text-xs text-muted-foreground">AI Assistant</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -297,11 +386,13 @@ export function ChatInterface() {
                 placeholder="Type your message..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                disabled={sending}
                 className="flex-1 bg-background border-border text-foreground placeholder:text-muted-foreground"
               />
               <Button
                 onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || sending}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
               >
                 <Send className="w-4 h-4" />
