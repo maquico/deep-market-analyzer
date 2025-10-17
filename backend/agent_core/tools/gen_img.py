@@ -9,7 +9,7 @@ API_URL = "https://71vfitor4i.execute-api.us-east-1.amazonaws.com/dev/generate-i
 REQUEST_TIMEOUT = 120  # seconds - image generation can take time
 DYNAMO_TABLE_NAME = "deep-market-analyzer-images"
 
-def invoke_via_api_gateway(use_case: str, chat_id: str, user_id: str = "default_user", ) -> Dict[str, Any]:
+def call_img_gateway(use_case: str, chat_id: str, user_id: str = "default_user", ) -> Dict[str, Any]:
     payload = {"use_case": use_case, "user_id": user_id}
     headers = {"Content-Type": "application/json"}
 
@@ -67,6 +67,8 @@ def invoke_via_api_gateway(use_case: str, chat_id: str, user_id: str = "default_
                 {
                     "image_id": img["image_id"],
                     "description": img["description"],
+                    "s3_bucket": img["s3_bucket"],
+                    "s3_key": img["s3_key"],
                     "presigned_url": img["presigned_url"]
                 } for img in saved_images
             ]
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     test_use_case = "A mobile app that helps users track their daily water intake and reminds them to stay hydrated."
 
     try:
-        result = invoke_via_api_gateway(test_use_case, chat_id="2853a8e2-2702-4cc4-a022-e1dcb7b813c3",user_id="angel27")
+        result = call_img_gateway(test_use_case, chat_id="2853a8e2-2702-4cc4-a022-e1dcb7b813c3",user_id="angel27")
         print("Result type:", type(result))
         print(json.dumps(result, indent=2, ensure_ascii=False))
     except Exception as e:

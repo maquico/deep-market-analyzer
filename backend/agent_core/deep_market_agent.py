@@ -14,7 +14,7 @@ from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
 from dynamo_handler import add_message_to_chat
-from tools.gen_img import invoke_via_api_gateway
+from tools.gen_img import call_img_gateway
 from tools.web_search import tavily_search, tavily_extract
 from dotenv import load_dotenv
 import json
@@ -119,7 +119,7 @@ def create_agent(client,
         Use this tool:
         - If the user explicitly requests an image.
         - Before generating a report, document, or pdf to include images in it.""" 
-        result = invoke_via_api_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
+        result = call_img_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
         return result
     
     @tool
