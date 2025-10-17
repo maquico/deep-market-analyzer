@@ -61,11 +61,12 @@ async def invoke_agent(prompt: str,
 @router.post("/message_with_bot", response_model=MessageResponse)
 async def message_with_bot(request: MessageRequest):
     """Handle a message request and interact with the Bedrock AgentCore agent."""
+    print(f"Received request: {request} on the date {datetime.datetime.now().isoformat()}")
+
     if not request.query:
         raise HTTPException(status_code=400, detail="Query is required")
     
     # Generate unique IDs
-    message_id = str(uuid.uuid4())
     chat_id = request.chat_id or str(uuid.uuid4())
     user_id = request.user_id or "default_user"
     
@@ -78,14 +79,14 @@ async def message_with_bot(request: MessageRequest):
             "created_at": datetime.datetime.now().isoformat()
         })
     
-    # Store the user's message
-    messages_table.put_item(Item={
-        "message_id": message_id,
-        "chat_id": chat_id,
-        "created_at": datetime.datetime.now().isoformat(),
-        "sender": "USER",
-        "content": request.query
-    })
+    # # Store the user's message
+    # messages_table.put_item(Item={
+    #     "message_id": message_id,
+    #     "chat_id": chat_id,
+    #     "created_at": datetime.datetime.now().isoformat(),
+    #     "sender": "USER",
+    #     "content": request.query
+    # })
     
     # Invoke the agent and get the response
     
@@ -113,22 +114,21 @@ async def message_with_bot(request: MessageRequest):
         if not response_text:
             response_text = "No response from agent."
         
-        # Store the agent's response
-        response_message_id = str(uuid.uuid4())
-        messages_table.put_item(Item={
-            "message_id": response_message_id,
-            "chat_id": chat_id,
-            "created_at": datetime.datetime.now().isoformat(),
-            "sender": "ASSISTANT",
-            "content": response_text
-        })
+        # # Store the agent's response
+        # response_message_id = str(uuid.uuid4())
+        # messages_table.put_item(Item={
+        #     "message_id": response_message_id,
+        #     "chat_id": chat_id,
+        #     "created_at": datetime.datetime.now().isoformat(),
+        #     "sender": "ASSISTANT",
+        #     "content": response_text
+        # })
         
         return MessageResponse(
             message=response_text,
             chat_id=chat_id,
             success=True,
             user_id=user_id,
-            message_id=response_message_id
         )
     
     except Exception as e:

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Union, Any
 
 
 class ChatMessage(BaseModel):
@@ -7,7 +7,26 @@ class ChatMessage(BaseModel):
     chat_id: str
     created_at: str
     sender: str
-    content: str
+    content: Union[str, List[Any]]  # Puede ser string o lista de objetos
+    
+    @field_validator('content')
+    @classmethod
+    def extract_text_from_content(cls, v):
+        """
+        Si content es una lista, extrae y concatena solo los textos.
+        Si es string, lo devuelve tal cual.
+        """
+        if isinstance(v, list):
+            texts = []
+            for item in v:
+                if isinstance(item, dict):
+                    # Extraer el texto del campo 'text' si existe
+                    if item.get('type') == 'text' and 'text' in item:
+                        texts.append(item['text'])
+                elif isinstance(item, str):
+                    texts.append(item)
+            return '\n'.join(texts) if texts else ''
+        return v
 
 
 class Chat(BaseModel):
