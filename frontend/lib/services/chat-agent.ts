@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ChatRequest, ChatResponse } from '@/lib/types';
+import { ChatResponse } from '@/lib/types';
 import { API_CONFIG, ApiError } from '@/lib/api-config';
 import { API_ROUTES } from '@/lib/api-routes';
 

@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Link from "next/link"
 import { useChats } from "@/hooks/use-chats"
-import { UIMessage, UIChat } from "@/lib/services"
 
 export function ChatInterface() {
   const {
@@ -136,7 +135,7 @@ export function ChatInterface() {
                     Give your analysis session a descriptive name to help identify it later.
                     {pendingMessage && (
                       <span className="block mt-2 text-sm font-medium text-foreground">
-                        Your message: "{pendingMessage.substring(0, 50)}{pendingMessage.length > 50 ? '...' : ''}"
+                        Your message: &ldquo;{pendingMessage.substring(0, 50)}{pendingMessage.length > 50 ? '...' : ''}&rdquo;
                       </span>
                     )}
                   </DialogDescription>

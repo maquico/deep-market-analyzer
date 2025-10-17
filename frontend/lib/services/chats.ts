@@ -1,4 +1,4 @@
-import { Chat, ChatMessage } from '@/lib/types';
+import { Chat } from '@/lib/types';
 import { apiClient } from '@/lib/api-client';
 import { API_ROUTES } from '@/lib/api-routes';
 

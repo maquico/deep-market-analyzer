@@ -58,7 +58,7 @@ export interface ChatResponse {
   session_id: string;
   user_id: string;
   sources?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Types para el UI local
