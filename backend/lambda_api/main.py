@@ -13,7 +13,7 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://main.d1zc9xcg5a2lei.amplifyapp.com/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,5 +30,5 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
-# Handler para AWS Lambda
-handler = Mangum(app)
+# # Handler para AWS Lambda
+# handler = Mangum(app)

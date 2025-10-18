@@ -4,6 +4,7 @@ import uuid
 import datetime
 import json
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from app.models import MessageRequest, MessageResponse
 from app.dynamo import (
     chats_table,
@@ -133,3 +134,78 @@ async def message_with_bot(request: MessageRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error invoking agent: {str(e)}")
+
+
+def _parse_event(evt):
+    """Parse event to dictionary format."""
+    if isinstance(evt, str):
+        return json.loads(evt)
+    elif isinstance(evt, dict):
+        return evt
+    return None
+
+
+def _create_sse_message(msg_type: str, **data):
+    """Create a Server-Sent Event message."""
+    payload = {'type': msg_type, **data}
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+@router.post("/message_with_bot_stream")
+async def message_with_bot_stream(request: MessageRequest):
+    """Handle a message request and stream the response in real-time chunks."""
+    print(f"Received streaming request: {request} on the date {datetime.datetime.now().isoformat()}")
+
+    if not request.query:
+        raise HTTPException(status_code=400, detail="Query is required")
+    
+    # Generate unique IDs
+    chat_id = request.chat_id or str(uuid.uuid4())
+    user_id = request.user_id or "default_user"
+    
+    # Create a new chat if chat_id was not provided
+    if not request.chat_id:
+        chats_table.put_item(Item={
+            "chat_id": chat_id,
+            "chat_name": request.chat_name or "New Chat",
+            "user_id": user_id,
+            "created_at": datetime.datetime.now().isoformat()
+        })
+    
+    async def event_generator():
+        """Generate Server-Sent Events with the agent's response chunks."""
+        try:
+            # Send initial metadata
+            yield _create_sse_message('metadata', chat_id=chat_id, user_id=user_id)
+            
+            # Stream the agent's response
+            async for evt in invoke_agent(
+                prompt=request.query,
+                session_id=chat_id,
+                user_id=user_id,
+                memory_id=config.MEMORY_ID_BEDROCK_AGENT_CORE
+            ):
+                evt_dict = _parse_event(evt)
+                if not evt_dict:
+                    continue
+                
+                chunk = evt_dict.get("message", "")
+                if chunk:
+                    yield _create_sse_message('chunk', content=chunk)
+            
+            # Send completion signal
+            yield _create_sse_message('done', chat_id=chat_id)
+            
+        except Exception as e:
+            yield _create_sse_message('error', message=str(e))
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream; charset=utf-8",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Content-Type": "text/event-stream; charset=utf-8"
+        }
+    )
