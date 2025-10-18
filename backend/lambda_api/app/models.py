@@ -47,8 +47,11 @@ class Document(BaseModel):
     chat_id: str
     user_id: str
     name: str
-    s3_path: str
+    s3_path: Optional[str] = None
     uploaded_at: str
+    pdf_url: Optional[str] = None
+    pdf_presigned_url: Optional[str] = None
+
 
 class MessageRequest(BaseModel):
     query: str
