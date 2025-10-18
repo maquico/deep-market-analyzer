@@ -3,18 +3,21 @@ from bedrock_agentcore import BedrockAgentCoreApp
 import boto3
 from langgraph.graph import StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition, InjectedState
-from langchain_core.tools import tool
+from langchain_core.tools import tool, InjectedToolCallId
 from langchain_core.runnables import RunnableConfig
 from langchain_core.stores import BaseStore
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langgraph.graph.message import add_messages
+from langgraph.types import Command
 from langgraph_checkpoint_aws import AgentCoreMemorySaver, AgentCoreMemoryStore
 from typing import TypedDict, Annotated
 from langchain_aws import ChatBedrock
 from bedrock_agentcore.memory import MemoryClient
 from prompts import deep_market_agent_v1_prompt
-from chat import add_message_to_chat
-from tools.gen_img import invoke_via_api_gateway
+from dynamo_handler import add_message_to_chat
+from tools.gen_img import call_img_gateway
+from tools.web_search import tavily_search, tavily_extract
+from tools.gen_pdf import ModelInput, execute_pdf_report_generation_flow
 from dotenv import load_dotenv
 import json
 import uuid
@@ -31,6 +34,9 @@ class DeepMarketAgentState(TypedDict):
     # (in this case, it appends messages to the list, rather than overwriting them)
     messages: Annotated[list, add_messages]
     user_id: str
+    pdf_document_id: str
+    pdf_presigned_url: str
+
 
 
 def create_agent(client,
@@ -83,12 +89,15 @@ def create_agent(client,
         namespace = (actor_id, thread_id)
 
         messages = state.get("messages", [])
-        # Save the last human message we see before LLM invocation
+        # Save the last AI message we see after LLM invocation
         for msg in reversed(messages):
             if isinstance(msg, AIMessage):
+                #print("POST MODEL HOOK MESSAGE: ", msg)
+                content = msg.content[0].get("text", None)
                 store.put(namespace, str(uuid.uuid4()), {"message": msg})
-                final_message = {"content": msg.content, "sender": "ASSISTANT"}
-                add_message_to_chat(session_id, final_message)
+                if content:
+                    final_message = {"content": content, "sender": "ASSISTANT"}
+                    add_message_to_chat(session_id, final_message)
                 break
 
         return {"messages": messages}
@@ -97,7 +106,6 @@ def create_agent(client,
     def search_chat_history(query: str):
         """Tool used when needed to retrieve general and important information from chat history. 
         Formulate the query based on what you want to know about the user""" 
-        
         user_memories_namespace = ("users", actor_id)
         memories = store.search(user_memories_namespace, query=query, limit=10)
         return str(memories)
@@ -106,14 +114,59 @@ def create_agent(client,
     def generate_image(image_description: str):
         """Tool used to generate an image based on user input about products or services ideas.
         Use this tool:
-        - If the user explicitly requests an image.
-        - Before generating a report, document, or pdf to include images in it.""" 
-        result = invoke_via_api_gateway(use_case=image_description, user_id=actor_id)  
-        return result 
-        
+        - If the user explicitly requests an image.""" 
+        result = call_img_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
+        return result
     
+    @tool
+    def research_web(query: str):
+        """Tool used to perform web searches to find relevant and recent information about markets, competitors, trends, and more.
+        Use this tool:
+        - If the user asks for recent information or data.
+        - If the user asks for information about competitors, market trends, or specific products/services.
+        - If the user asks for statistics, facts, or figures that may not be in your training data."""
+
+        search_results = tavily_search(query, include_answer=True, max_results=5)
+        return search_results
+    
+    @tool
+    def extract_urls(urls: list):
+        """Tool used to extract and summarize information from a list of URLs.
+        Use this tool:
+        - If the user provides URLs and asks for summaries or insights from them.
+        - If the user asks for detailed information about specific websites or articles you found using the research_web tool."""
+        extraction_results = tavily_extract(urls)
+        return extraction_results
+    
+    @tool
+    def generate_pdf_report(messages: Annotated[list, InjectedState("messages")], tool_call_id: Annotated[str, InjectedToolCallId]):
+        """Tool used to generate a PDF report based on the conversation.
+        Use this tool:
+        - If the user explicitly requests a report or document.
+        """
+        output = execute_pdf_report_generation_flow(messages=messages,
+                                           chat_id=session_id,
+                                           user_id=actor_id,
+                                           extract_model=ModelInput(model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", temperature=0.3),
+                                           images_query_model=ModelInput(model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", temperature=0.3),
+                                           report_def_model=ModelInput(model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", temperature=0.3))
+        
+        if output:
+            return Command(update={
+                "messages": [ToolMessage(content="PDF report generated successfully.", tool_call_id=tool_call_id)],
+                "pdf_document_id": output.get("document_id", ""),
+                "pdf_presigned_url": output.get("pdf_presigned_url", "")
+            })
+        else:
+            return {"error": "There was an error generating the PDF report."}
+
     # Bind tools to the LLM
-    tools = [search_chat_history, generate_image]
+    tools = [search_chat_history,
+             generate_image,
+             research_web,
+             extract_urls,
+             generate_pdf_report,
+             ]
     llm_with_tools = llm.bind_tools(tools)
     
     # System message
@@ -122,13 +175,12 @@ def create_agent(client,
     # Define the chatbot node
     def chatbot(state: DeepMarketAgentState):
         raw_messages = state["messages"]
-    
-        # Remove any existing system messages to avoid duplicates or misplacement
+
         non_system_messages = [msg for msg in raw_messages if not isinstance(msg, SystemMessage)]
-    
+
         # Always ensure SystemMessage is first
         messages = [SystemMessage(content=system_message)] + non_system_messages[-6:]  # Limit to last 6 messages for context
-    
+
         # Get response from model with tools bound
         response = llm_with_tools.invoke(messages
                                          #config={"configurable": {"actor_id": actor_id, "thread_id": session_id}}
@@ -153,7 +205,7 @@ def create_agent(client,
     )
     graph_builder.add_edge("pre_model_hook", "chatbot")
     graph_builder.add_edge("chatbot", "post_model_hook")
-    graph_builder.add_edge("tools", "pre_model_hook")
+    graph_builder.add_edge("tools", "chatbot")
     
     # Set entry point
     graph_builder.set_entry_point("pre_model_hook")
@@ -188,10 +240,11 @@ async def stream_invoke_langgraph_agent(payload, agent):
     session_id = payload.get("session_id", "default_session")
     nodes_to_stream = ["chatbot"]
     async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)]},
-                                            config={"configurable": {"actor_id": actor_id, "thread_id": session_id}}):
+                                            config={"recursion_limit": 50,
+                                                    "configurable": {"actor_id": actor_id, "thread_id": session_id}}):
+        #print("event type: ", event["event"])
         if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:
             data = event["data"]
-            #print("DATA: ", data)
             chunk = ""
             if data["chunk"].content:
                 if data["chunk"].content[0].get("text", None):
@@ -199,6 +252,17 @@ async def stream_invoke_langgraph_agent(payload, agent):
                     #print("CHUNK: ", chunk)
 
             yield json.dumps({"message": chunk})
+
+    final_state = agent.get_state({"configurable": {"actor_id": actor_id, "thread_id": session_id}})
+    if final_state and (final_state.values.get("pdf_document_id", None) or final_state.values.get("pdf_presigned_url", None)):
+        document_id = final_state.values.get("pdf_document_id", None)
+        pdf_presigned_url = final_state.values.get("pdf_presigned_url", None)
+        doc_data = {}
+        if document_id:
+            doc_data["document_id"] = document_id
+        if pdf_presigned_url:
+            doc_data["pdf_report_link"] = pdf_presigned_url
+        yield json.dumps({"message": "", "data": doc_data})
 
 
 app = BedrockAgentCoreApp()
