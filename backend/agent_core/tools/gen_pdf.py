@@ -2,6 +2,7 @@ import json
 import base64
 import boto3
 import requests
+import uuid
 from langchain_aws import ChatBedrock
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import AnyMessage, AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -87,15 +88,8 @@ def extract_info_from_messages(messages: list[AnyMessage],
         | parser
     )
     conversation = ""
+
     for m in messages:
-        if isinstance(m, AIMessage):
-            m.type = "AIMessage"
-        elif isinstance(m, HumanMessage):
-            m.type = "HumanMessage"
-        elif isinstance(m, SystemMessage):
-            m.type = "SystemMessage"
-        elif isinstance(m, ToolMessage):
-            m.type = "ToolMessage"
         conversation = conversation + f"<{m.type}>\n{m.content}\n</{m.type}>\n"
     report_info = method_chain.invoke({"conversation": conversation})
     return report_info
@@ -191,36 +185,45 @@ def execute_pdf_report_generation_flow(messages: list[AnyMessage],
     info = extract_info_from_messages(messages=messages,
                                       model_id=extract_model.model_id,
                                       temperature=extract_model.temperature)
-    print("\n\nExtracted info:", info)
+    #print("\n\nExtracted info:", info)
     images = generate_images_for_report(info=info,
                                         chat_id=chat_id,
                                         user_id=user_id,
                                         model_id=images_query_model.model_id,
                                         temperature=images_query_model.temperature)
     images = images.get("images", [])
-    print("\n\nGenerated images:", images)
+    #print("\n\nGenerated images:", images)
     report = generate_report_definition(info=info,
                                         images=images,
                                         model_id=report_def_model.model_id,
                                         temperature=report_def_model.temperature)
-    print("\n\nGenerated report definition:", report)
+    #print("\n\nGenerated report definition:", report)
     
     final_report = build_final_report(report=report, images=images)
-    print("\n\nFinal report with images:", final_report)
+    #print("\n\nFinal report with images:", final_report)
 
     pdf_presigned_url = call_pdf_gateway(data=final_report.model_dump(), template=template)
-    print("\n\nPDF generation response:", pdf_presigned_url)
+    #print("\n\nPDF generation response:", pdf_presigned_url)
 
+    
     # Store report record in DynamoDB
+    document_id = str(uuid.uuid4())
+
+    # Extract bucket and key from presigned URL
+    s3_bucket = pdf_presigned_url.split("//")[1].split(".")[0]
+    s3_key = pdf_presigned_url.split("//")[1].split("/", 1)[1].split("?")[0]
     document_record = {
+        "document_id": document_id,
         "chat_id": chat_id,
         "user_id": user_id,
         "report_data": final_report.model_dump(),
-        "pdf_url": pdf_presigned_url if isinstance(pdf_presigned_url, str) else "",
+        "s3_bucket": s3_bucket,
+        "s3_key": s3_key,
+        "pdf_presigned_url": pdf_presigned_url if isinstance(pdf_presigned_url, str) else "",
     }
     add_document_record(document_record)
 
-    return pdf_presigned_url
+    return {"document_id": document_id, "pdf_presigned_url": pdf_presigned_url}
 
 if __name__ == "__main__":
     # Example HTML (you can wrap with wrapInHtmlPage(content))
