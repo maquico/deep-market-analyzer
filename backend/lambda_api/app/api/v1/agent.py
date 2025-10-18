@@ -39,13 +39,17 @@ async def invoke_agent(prompt: str,
         runtimeSessionId=session_id,
         payload=payload
     )
+    print("Agent invoked, processing response...")
+
     
     # Process and print the response
     if "text/event-stream" in response.get("contentType", ""):
         print("Streaming response received")
         for line in response["response"].iter_lines(chunk_size=1):
+            print(f"Raw line: {line}")
             if line:
                 line = line.decode("utf-8")
+                # print(f"Received line: {line}")
                 if line.startswith("data: "):
                     line = line[6:]
                     yield json.loads(line)
@@ -190,9 +194,12 @@ async def message_with_bot_stream(request: MessageRequest):
                     continue
                 
                 chunk = evt_dict.get("message", "")
+                chunk_data = evt_dict.get("data", {})
                 if chunk:
-                    yield _create_sse_message('chunk', content=chunk)
-            
+                    yield _create_sse_message('text', content=chunk)
+                if chunk_data:
+                    yield _create_sse_message('document', document=chunk_data)
+
             # Send completion signal
             yield _create_sse_message('done', chat_id=chat_id)
             
