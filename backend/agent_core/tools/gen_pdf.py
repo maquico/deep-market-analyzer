@@ -9,7 +9,7 @@ from langchain_core.messages import AnyMessage, AIMessage, HumanMessage, SystemM
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from prompts import (
     pdf_parser_v1_prompt,
     messages_extraction_v1_prompt,
@@ -20,7 +20,208 @@ from dynamo_handler import add_document_record
 
 API_URL = "https://e6znu0x2lk.execute-api.us-east-1.amazonaws.com/dev/generate-pdf"
 
-template = """<div style="padding:8px 0 24px 0;">  <div style="display:flex;justify-content:space-between;align-items:center;">    <div>      <h1 style="margin:0;font-size:28pt;color:#0b3c5d;font-weight:700;">{{main_title}}</h1>      <p style="margin:6px 0 0 0;color:#556; font-size:11pt;">{{subtitle}}</p>    </div>    <div style="text-align:right;color:#777;font-size:10pt;">      <div>Prepared by: {{prepared_by}}</div>      <div>{{date}}</div>    </div>  </div></div><section style="margin-top:12px;">  <h2 style="font-size:14pt;color:#0b3c5d;margin:0 0 6px 0;">Executive Summary</h2>  <h3 style="font-size:11pt;color:#2e5160;margin:0 0 8px 0;">{{summary_title}}</h3>  <p style="margin:0 0 12px 0;color:#333;line-height:1.45;">{{executive_paragraph}}</p></section>{{#each highlights}}<section style="margin-top:14px;">  <h2 style="font-size:14pt;color:#0b3c5d;margin:0 0 8px 0;">{{this.title}}</h2>  <h3 style="font-size:11pt;color:#2e5160;margin:0 0 8px 0;">{{this.subtitle}}</h3>  <p style="margin:0 0 10px 0;color:#333;line-height:1.45;">{{this.paragraph}}</p>  <div style="border:1px solid #eef2f5;border-radius:8px;padding:10px;background:#fff;">    <div style="font-size:10pt;color:#444;margin-bottom:8px;font-weight:600;">Image: {{this.image_title}}</div>    <div style="background:{{this.image_bg}};padding:12px;border-radius:6px;display:flex;align-items:center;justify-content:center;">      {{{this.image_svg}}}    </div>  </div></section>{{/each}}<section style="margin-top:18px;">  <h2 style="font-size:13pt;color:#0b3c5d;margin:0 0 8px 0;">Closing notes</h2>  <p style="margin:0;color:#333;line-height:1.45;">{{closing_paragraph}}</p></section>"""
+template = """
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    /* Layout + print safety */
+    body { font-family: "Helvetica Neue", Arial, sans-serif; color: #222; margin: 0; padding: 24px; }
+    .header { padding: 8px 0 24px 0; }
+    .header .row { display:flex; justify-content:space-between; align-items:center; }
+    h1 { margin: 0; font-size: 28pt; color: #0b3c5d; font-weight:700; }
+    .subtitle { margin:6px 0 0 0; color:#556; font-size:11pt; }
+
+    hr.divider { border:none; border-top:1px solid #e0e6eb; margin:12px 0; }
+
+    section { page-break-inside: avoid; } /* prefer not to split sections */
+    .image-block { 
+      page-break-inside: avoid; 
+      break-inside: avoid; 
+      -webkit-column-break-inside: avoid;
+      margin-bottom: 18px; 
+      display: block;
+    }
+    .image-card {
+      border: 1px solid #eef2f5;
+      border-radius: 10px;
+      padding: 12px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .image-title { font-size: 10pt; color:#444; margin-bottom:8px; font-weight:600; }
+    .image-inner {
+      background: var(--image-bg, #f7fbf8);
+      padding: 14px;
+      border-radius: 8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden; /* allow scaling inside */
+    }
+
+    /* images and inline svgs are constrained here */
+    .image-inner img,
+    .image-inner svg {
+      display:block;
+      max-width:100%;
+      height:auto;
+      object-fit: contain;
+      /* We'll set max-height dynamically when needed by JS */
+    }
+
+    .force-break { page-break-before: always; break-before: page; }
+
+    /* small responsive typography */
+    h2 { font-size: 14pt; color: #0b3c5d; margin: 0 0 6px 0; }
+    h3 { font-size: 11pt; color: #2e5160; margin: 0 0 8px 0; }
+    p { margin: 0 0 12px 0; color: #333; line-height: 1.55; }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="row">
+      <div>
+        <h1>{{main_title}}</h1>
+        <p class="subtitle">{{subtitle}}</p>
+      </div>
+      <div style="text-align:right;color:#777;font-size:10pt;">
+        <div>Prepared by: Deep Market Analyzer</div>
+        <div>Date: {{date}}</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <section style="margin-top:12px;">
+    <h2>Executive Summary</h2>
+    <h3>{{summary_title}}</h3>
+    <p>{{executive_paragraph}}</p>
+  </section>
+
+  {{#each highlights}}
+  <section style="margin-top:20px;">
+    <h2>{{this.title}}</h2>
+    <h3>{{this.subtitle}}</h3>
+    <p>{{this.paragraph}}</p>
+
+    <div class="image-block">
+      <div class="image-card">
+        <div class="image-title">Image: {{this.image_title}}</div>
+        <div class="image-inner" style="--image-bg: {{this.image_bg}};">
+          {{{this.image_svg}}}
+        </div>
+      </div>
+    </div>
+  </section>
+  {{/each}}
+
+  <section style="margin-top:28px;">
+    <h2>Closing Notes</h2>
+    <p>{{closing_paragraph}}</p>
+  </section>
+
+  <!-- Client-side measurement + placement logic (works when renderer executes JS, e.g., Puppeteer) -->
+  <script>
+    (function () {
+      // Small utility to get an element's outer height including margins
+      function outerHeight(el) {
+        const styles = window.getComputedStyle(el);
+        const h = Math.ceil(el.getBoundingClientRect().height);
+        const marginTop = parseFloat(styles.marginTop || 0);
+        const marginBottom = parseFloat(styles.marginBottom || 0);
+        return h + marginTop + marginBottom;
+      }
+
+      // Run after a small timeout to allow images to load (adjust if your images are heavy)
+      function runLayoutRules() {
+        const pageHeight = window.innerHeight || document.documentElement.clientHeight || 1122;
+        const imageBlocks = Array.from(document.querySelectorAll('.image-block'));
+
+        imageBlocks.forEach(block => {
+          // compute block full height (card)
+          const card = block.querySelector('.image-card');
+          if (!card) return;
+
+          const cardHeight = outerHeight(card);
+
+          // determine where the top of the block sits within the current page
+          const blockRect = block.getBoundingClientRect();
+          // top position within document
+          const topDocument = blockRect.top + window.scrollY;
+          // compute top offset inside the current page
+          // We use pageHeight and the element's visual top to compute "used" of page
+          const topOffsetInPage = ((topDocument % pageHeight) + pageHeight) % pageHeight;
+          const usedSoFar = topOffsetInPage;
+          const remaining = pageHeight - topOffsetInPage;
+
+          // compute the fraction of the page that would be used AFTER placing the block
+          const fractionAfter = (usedSoFar + cardHeight) / pageHeight;
+
+          // policy: if placing the block results in page usage < 0.75, move it to next page.
+          if (fractionAfter < 0.75) {
+            // Move entire block to next page so current page doesn't remain mostly empty.
+            block.classList.add('force-break');
+            return;
+          }
+
+          // Otherwise, allow it on the page. If it doesn't physically fit, try to scale it down.
+          if (cardHeight > remaining) {
+            // target: leave a small gutter; reserve space for title & padding
+            const inner = block.querySelector('.image-inner');
+            const titleEl = block.querySelector('.image-title');
+            const reserved = (titleEl ? outerHeight(titleEl) : 30) + 24; // title + paddings
+            const targetMax = Math.max(60, remaining - reserved);
+
+            // Apply max-height to the inner container or to the image/svg inside
+            if (inner) {
+              // attempt to set max-height on images and svgs inside inner
+              const img = inner.querySelector('img');
+              const svg = inner.querySelector('svg');
+
+              if (img) {
+                img.style.maxHeight = targetMax + 'px';
+                img.style.height = 'auto';
+              } else if (svg) {
+                // scale svg by setting its max-height
+                svg.style.maxHeight = targetMax + 'px';
+                svg.style.height = 'auto';
+              } else {
+                // fallback: constrain inner container height (overflow:hidden)
+                inner.style.maxHeight = targetMax + 'px';
+              }
+
+              // Recompute card height after scaling
+              const newCardHeight = outerHeight(card);
+              if (newCardHeight > remaining) {
+                // if still not fitting, move to next page instead
+                block.classList.add('force-break');
+              }
+            } else {
+              // no inner container — force break
+              block.classList.add('force-break');
+            }
+          }
+        });
+      }
+
+      // Wait for images and fonts to settle. Increase if you have very large remote images.
+      if (document.readyState === 'complete') {
+        setTimeout(runLayoutRules, 120);
+      } else {
+        window.addEventListener('load', () => setTimeout(runLayoutRules, 120));
+      }
+    })();
+  </script>
+</body>
+</html>
+"""
+
 
 class BaseHighlight(BaseModel):
     title: str = Field(..., description="Title of the highlight")
@@ -44,18 +245,23 @@ class FinalHighlight(BaseHighlight):
     image_bg: str = Field(..., description="Background color for the image in hex format, e.g., '#f7fbf8'")
 
 class FinalReportDefinition(BaseReportDefinition):
-    date: str = Field(default=datetime.now().isoformat(), description="Date of the report in ISO-like format, e.g., 'October 12, 2025'")
+    date: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%B %d, %Y"), description="Date of the report in ISO-like format, e.g., 'October 12, 2025'")
     highlights: list[FinalHighlight]
 
 class ModelInput(BaseModel):
     model_id: str
     temperature: float = 0.3
 
-def call_pdf_gateway(data=None, template=template):
-    payload = {
-        "template": template,
-        "data": data
-    }
+def call_pdf_gateway(data=None, template=template, html_content=None) -> dict:
+    if html_content:
+        payload = {
+            "html": html_content
+        }
+    else:
+        payload = {
+            "template": template,
+            "data": data,
+        }
     resp = requests.post(API_URL, json=payload, timeout=120)
 
     # Try JSON
@@ -175,6 +381,15 @@ def build_final_report(report: BaseReportDefinition, images: list) -> FinalRepor
     )
     return final_report
 
+def render_template(template: str, data: dict) -> str:
+    "Renders a simple template with {{placeholders}} using data dict"
+    rendered = template
+    for key, value in data.items():
+        placeholder = "{{" + key + "}}"
+        value = value if value is not None else ""
+        rendered = rendered.replace(placeholder, str(value))
+    return rendered
+
 def execute_pdf_report_generation_flow(messages: list[AnyMessage],
                   chat_id: str,
                   user_id: str,
@@ -182,48 +397,56 @@ def execute_pdf_report_generation_flow(messages: list[AnyMessage],
                   images_query_model: ModelInput,
                   report_def_model: ModelInput) -> dict:
     "Create a report from the messages"
-    info = extract_info_from_messages(messages=messages,
-                                      model_id=extract_model.model_id,
-                                      temperature=extract_model.temperature)
-    #print("\n\nExtracted info:", info)
-    images = generate_images_for_report(info=info,
-                                        chat_id=chat_id,
-                                        user_id=user_id,
-                                        model_id=images_query_model.model_id,
-                                        temperature=images_query_model.temperature)
-    images = images.get("images", [])
-    #print("\n\nGenerated images:", images)
-    report = generate_report_definition(info=info,
-                                        images=images,
-                                        model_id=report_def_model.model_id,
-                                        temperature=report_def_model.temperature)
-    #print("\n\nGenerated report definition:", report)
-    
-    final_report = build_final_report(report=report, images=images)
-    #print("\n\nFinal report with images:", final_report)
 
-    pdf_presigned_url = call_pdf_gateway(data=final_report.model_dump(), template=template)
-    #print("\n\nPDF generation response:", pdf_presigned_url)
+    try:
+        info = extract_info_from_messages(messages=messages,
+                                          model_id=extract_model.model_id,
+                                          temperature=extract_model.temperature)
+        #print("\n\nExtracted info:", info)
+        images = generate_images_for_report(info=info,
+                                            chat_id=chat_id,
+                                            user_id=user_id,
+                                            model_id=images_query_model.model_id,
+                                            temperature=images_query_model.temperature)
+        images = images.get("images", [])
+        #print("\n\nGenerated images:", images)
+        report = generate_report_definition(info=info,
+                                            images=images,
+                                            model_id=report_def_model.model_id,
+                                            temperature=report_def_model.temperature)
+        #print("\n\nGenerated report definition:", report)
 
-    
-    # Store report record in DynamoDB
-    document_id = str(uuid.uuid4())
+        final_report = build_final_report(report=report, images=images)
+        #print("\n\nFinal report with images:", final_report)
 
-    # Extract bucket and key from presigned URL
-    s3_bucket = pdf_presigned_url.split("//")[1].split(".")[0]
-    s3_key = pdf_presigned_url.split("//")[1].split("/", 1)[1].split("?")[0]
-    document_record = {
-        "document_id": document_id,
-        "chat_id": chat_id,
-        "user_id": user_id,
-        "report_data": final_report.model_dump(),
-        "s3_bucket": s3_bucket,
-        "s3_key": s3_key,
-        "pdf_presigned_url": pdf_presigned_url if isinstance(pdf_presigned_url, str) else "",
-    }
-    add_document_record(document_record)
+        # Build final html with template and data
+        html_content = render_template("report_template.html", data=final_report.model_dump())
+        pdf_presigned_url = call_pdf_gateway(html_content=html_content)
+        #pdf_presigned_url = call_pdf_gateway(data=final_report.model_dump(), template=template)
+        #print("\n\nPDF generation response:", pdf_presigned_url)
 
-    return {"document_id": document_id, "pdf_presigned_url": pdf_presigned_url}
+
+        # Store report record in DynamoDB
+        document_id = str(uuid.uuid4())
+
+        # Extract bucket and key from presigned URL
+        s3_bucket = pdf_presigned_url.split("//")[1].split(".")[0]
+        s3_key = pdf_presigned_url.split("//")[1].split("/", 1)[1].split("?")[0]
+        document_record = {
+            "document_id": document_id,
+            "chat_id": chat_id,
+            "user_id": user_id,
+            "report_data": final_report.model_dump(),
+            "s3_bucket": s3_bucket,
+            "s3_key": s3_key,
+            "pdf_presigned_url": pdf_presigned_url if isinstance(pdf_presigned_url, str) else "",
+        }
+        add_document_record(document_record)
+
+        return {"document_id": document_id, "pdf_presigned_url": pdf_presigned_url}
+    except Exception as e:
+        print("Error during report generation flow:", str(e))
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     # Example HTML (you can wrap with wrapInHtmlPage(content))
