@@ -1,4 +1,3 @@
-from logging import config
 from bedrock_agentcore import BedrockAgentCoreApp
 import boto3
 from langgraph.graph import StateGraph, MessagesState
@@ -36,7 +35,6 @@ class DeepMarketAgentState(TypedDict):
     user_id: str
     pdf_document_id: str
     pdf_presigned_url: str
-
 
 
 def create_agent(client,
@@ -139,11 +137,13 @@ def create_agent(client,
         return extraction_results
     
     @tool
-    def generate_pdf_report(messages: Annotated[list, InjectedState("messages")], tool_call_id: Annotated[str, InjectedToolCallId]):
+    def generate_pdf_report(query: str, messages: Annotated[list, InjectedState("messages")], tool_call_id: Annotated[str, InjectedToolCallId]):
         """Tool used to generate a PDF report based on the conversation.
         Use this tool:
         - If the user explicitly requests a report or document.
+        - Pass as query the message indicating the report request, e.g., "build the report based on that info"
         """
+        print("Generating PDF report with query", query)
         output = execute_pdf_report_generation_flow(messages=messages,
                                            chat_id=session_id,
                                            user_id=actor_id,
@@ -235,6 +235,8 @@ async def stream_invoke_langgraph_agent(payload, agent):
     """
     Stream invoke the agent with a payload
     """
+
+
     user_input = payload.get("prompt")
     actor_id = payload.get("user_id", "unknown_user")
     session_id = payload.get("session_id", "default_session")
@@ -242,7 +244,6 @@ async def stream_invoke_langgraph_agent(payload, agent):
     async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)]},
                                             config={"recursion_limit": 50,
                                                     "configurable": {"actor_id": actor_id, "thread_id": session_id}}):
-        #print("event type: ", event["event"])
         if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:
             data = event["data"]
             chunk = ""
@@ -250,8 +251,9 @@ async def stream_invoke_langgraph_agent(payload, agent):
                 if data["chunk"].content[0].get("text", None):
                     chunk = data["chunk"].content[0]["text"]
                     #print("CHUNK: ", chunk)
-
-            yield json.dumps({"message": chunk})
+            if chunk and isinstance(chunk, str) and chunk.strip() != "":
+                #print("Yielding chunk: ", chunk)
+                yield {"message": chunk}
 
     final_state = agent.get_state({"configurable": {"actor_id": actor_id, "thread_id": session_id}})
     if final_state and (final_state.values.get("pdf_document_id", None) or final_state.values.get("pdf_presigned_url", None)):
@@ -262,7 +264,7 @@ async def stream_invoke_langgraph_agent(payload, agent):
             doc_data["document_id"] = document_id
         if pdf_presigned_url:
             doc_data["pdf_report_link"] = pdf_presigned_url
-        yield json.dumps({"message": "", "data": doc_data})
+        yield {"message": "", "data": doc_data}
 
 
 app = BedrockAgentCoreApp()
@@ -273,6 +275,7 @@ async def agent_invocation(payload):
     payload = json.loads(payload) if isinstance(payload, str) else payload
     agent = create_agent(client, memory_id=payload.get("memory_id"), actor_id=payload.get("user_id"), session_id=payload.get("session_id"))
     async for event in stream_invoke_langgraph_agent(payload=payload, agent=agent):
+        #print("Yielding event: ", event, "of type ", type(event))
         yield event
 
 if __name__ == "__main__":
