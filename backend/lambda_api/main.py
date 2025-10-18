@@ -30,5 +30,5 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
-# # Handler para AWS Lambda
-# handler = Mangum(app)
+# Handler para AWS Lambda
+handler = Mangum(app)
