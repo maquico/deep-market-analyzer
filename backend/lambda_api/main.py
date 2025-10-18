@@ -13,7 +13,7 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://main.d1zc9xcg5a2lei.amplifyapp.com/"],
+    allow_origins=["https://main.d1zc9xcg5a2lei.amplifyapp.com/", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
