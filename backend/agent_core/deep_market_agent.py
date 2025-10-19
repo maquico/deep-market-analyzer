@@ -235,13 +235,14 @@ async def stream_invoke_langgraph_agent(payload, agent):
     """
     Stream invoke the agent with a payload
     """
-
-
     user_input = payload.get("prompt")
     actor_id = payload.get("user_id", "unknown_user")
     session_id = payload.get("session_id", "default_session")
     nodes_to_stream = ["chatbot"]
-    async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)]},
+    async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)],
+                                             "user_id": actor_id,
+                                             "pdf_document_id": None,
+                                             "pdf_presigned_url": None},
                                             config={"recursion_limit": 50,
                                                     "configurable": {"actor_id": actor_id, "thread_id": session_id}}):
         if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:

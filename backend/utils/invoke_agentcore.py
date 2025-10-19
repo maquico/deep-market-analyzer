@@ -36,6 +36,7 @@ async def invoke_agent(prompt: str,
                     if isinstance(line, dict):
                         print("DICT DATA:", line)
                     else:
+                        print("LINE DATA:", line)
                         yield json.loads(line)
     else:
         print("Non-streaming response received")
@@ -50,11 +51,11 @@ async def invoke_agent(prompt: str,
 if __name__ == "__main__":
     import asyncio
     async def main():
-        prompts = [#"Hello my name is Angel",
+        prompts = ["Hello my name is Angel",
                    #"what are my competitors? My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
                    #"what are my competitors?",
                    #"yes please research them",
-                   "build the report based on that info",
+                   #"build the report based on that info",
                    #"I want to create a marketing plan to increase brand awareness and drive sales. What strategies should I consider?",
                    #"I would like to create a disruptive new product to compete with Amazon and Etsy.Mainly on the Europe market as I have already a big public on the US. What ideas do you have?",
                    #"Based on our conversation, what are my main business objectives and target markets"
@@ -74,7 +75,7 @@ if __name__ == "__main__":
                 else:
                     continue
                 chunk = evt_dict.get("message", "")
-                print(chunk, end="", flush=True)
+                #print(chunk, end="", flush=True)
 
     asyncio.run(main())
     
