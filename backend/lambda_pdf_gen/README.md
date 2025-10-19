@@ -336,7 +336,7 @@ This will execute the test cases included in `local_test.mjs`.
 
 ## 👥 Authors
 
-William Ferreira, Luis Adames, Angel Moreno
+Angel Moreno, Luis Adames, William Ferreira
 
 ## 📄 License
 

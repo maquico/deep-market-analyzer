@@ -161,6 +161,10 @@ Each service can be deployed independently using Serverless Framework or AWS SAM
 - Deployment commands
 - Configuration requirements
 
+## 👥 Authors
+
+Angel Moreno, Luis Adames, William Ferreira
+
 ---
 
 **Note**: This backend is designed for AWS Lambda. For local development, see individual service READMEs for setup instructions.

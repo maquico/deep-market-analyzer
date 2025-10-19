@@ -153,7 +153,7 @@ Each folder contains specific README files and configuration for running locally
 
 ## 👥 Ownership
 
-**Authors**: William Ferreira, Luis Adames, Angel Moreno
+**Authors**: Angel Moreno, Luis Adames, William Ferreira
 
 ---
 
