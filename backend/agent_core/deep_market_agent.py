@@ -145,6 +145,7 @@ def create_agent(client,
         """
         print("Generating PDF report with query", query)
         output = execute_pdf_report_generation_flow(messages=messages,
+                                                    query=query,
                                            chat_id=session_id,
                                            user_id=actor_id,
                                            extract_model=ModelInput(model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", temperature=0.3),

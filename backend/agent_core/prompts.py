@@ -11,9 +11,10 @@ Avoid making up answers. If you don't know, say "I don't know".
 """
 
 messages_extraction_v1_prompt = """
-You are an assistant that analyzes the full conversation between a user and an AI to extract the essential information needed for a written report.
+You are an assistant that analyzes the full conversation between a user and an AI to extract the essential information needed for a written report based on the query provided.
 
-Your goal is to produce a *single, well-written paragraph* (plain text only) summarizing all key points from the conversation. 
+The query indicates the ONLY focus of the report.
+Extract only data that is relevant to answering the query.
 Focus on what is **most relevant** for the final report: topics discussed, insights, user goals, data mentioned, and any context or reasoning steps that contribute meaningfully to the understanding of the subject.
 
 RULES:
@@ -24,6 +25,8 @@ RULES:
 5. Output only the final summarized text string — no extra commentary or metadata.
 
 <context>
+{query}
+
 {conversation}
 </context>
 """
