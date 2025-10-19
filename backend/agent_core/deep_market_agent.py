@@ -114,8 +114,9 @@ def create_agent(client,
         return str(memories)
     
     @tool
-    def generate_image(image_description: str, tool_call_id: Annotated[str, InjectedToolCallId]):
-        """Tool used to generate an image based on user input about products or services ideas.
+    def generate_images(image_description: str, tool_call_id: Annotated[str, InjectedToolCallId]):
+        """Tool used to generate images based on user input about products or services ideas.
+        Always generates 3 variations of the same image description.
         Use this tool:
         - If the user explicitly requests an image.""" 
         result = call_img_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
@@ -172,7 +173,7 @@ def create_agent(client,
 
     # Bind tools to the LLM
     tools = [search_chat_history,
-             generate_image,
+             generate_images,
              research_web,
              extract_urls,
              generate_pdf_report,

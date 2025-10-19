@@ -53,7 +53,7 @@ if __name__ == "__main__":
     import asyncio
     async def main():
         prompts = [#"Hello my name is Angel",
-                   "what are my competitors? My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
+                   #"what are my competitors? My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
                    #"what are my competitors?",
                    #"yes please research them",
                    #"build the report based on that info",
@@ -61,6 +61,7 @@ if __name__ == "__main__":
                    #"I would like to create a disruptive new product to compete with Amazon and Etsy.Mainly on the Europe market as I have already a big public on the US. What ideas do you have?",
                    #"Based on our conversation, what are my main business objectives and target markets"
                    #"Check our conv history and then Please build the report again"
+                   "Generate some logo design ideas for a startup e-commerce company specializing in handmade crafts."
                    ]
         for prompt in prompts:
             generator = invoke_agent(prompt=prompt,

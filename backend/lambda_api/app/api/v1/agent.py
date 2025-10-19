@@ -195,8 +195,9 @@ async def message_with_bot_stream(request: MessageRequest):
                 
                 chunk = evt_dict.get("message", "")
                 chunk_data = evt_dict.get("data", {})
-                document_id = evt_dict.get("document_id", None)
-                images = evt_dict.get("images", None)
+                if chunk_data:
+                    document_id = chunk_data.get("document_id", None)
+                    images = chunk_data.get("images", None)
                 if chunk:
                     yield _create_sse_message('text', content=chunk)
                 elif document_id:
