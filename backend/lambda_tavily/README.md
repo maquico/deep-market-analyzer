@@ -1,99 +1,99 @@
 # Tavily Search Lambda Service
 
-Servicio AWS Lambda que proporciona las 4 funcionalidades principales de búsqueda web usando la API de Tavily: **Search**, **Extract**, **Crawl** y **Map**.
+AWS Lambda service that provides the 4 main web search functionalities using the Tavily API: **Search**, **Extract**, **Crawl**, and **Map**.
 
-## 📋 Características
+## 📋 Features
 
-- **🔍 Search**: Búsqueda web completa con resultados detallados, respuestas IA, e imágenes
-- **📄 Extract**: Extrae contenido limpio de URLs específicas (máx. 10 URLs)
-- **🕷️ Crawl**: Crawlea sitios web recursivamente hasta 3 niveles de profundidad
-- **🗺️ Map**: Mapea resultados de búsqueda con relaciones y contexto estructurado
+- **🔍 Search**: Complete web search with detailed results, AI-generated answers, and images
+- **📄 Extract**: Extracts clean content from specific URLs (max. 10 URLs)
+- **🕷️ Crawl**: Crawls websites recursively up to 3 levels deep
+- **🗺️ Map**: Maps search results with relationships and structured context
 
-## 🚀 Estructura del Proyecto
+## 🚀 Project Structure
 
 ```
 .
-├── handler.py           # Código principal con 4 funciones de Tavily
-├── serverless.yml       # Configuración de Serverless Framework
-├── requirements.txt     # Dependencias de Python
-├── .gitignore          # Archivos ignorados por Git
-└── README.md           # Este archivo
+├── handler.py           # Main code with 4 Tavily functions
+├── serverless.yml       # Serverless Framework configuration
+├── requirements.txt     # Python dependencies
+├── .gitignore          # Files ignored by Git
+└── README.md           # This file
 ```
 
-## 📦 Requisitos Previos
+## 📦 Prerequisites
 
-1. **AWS CLI** configurado con credenciales
-2. **Serverless Framework** instalado:
+1. **AWS CLI** configured with credentials
+2. **Serverless Framework** installed:
    ```bash
    npm install -g serverless
    ```
-3. **Plugin de Python Requirements**:
+3. **Python Requirements Plugin**:
    ```bash
    serverless plugin install -n serverless-python-requirements
    ```
-4. **Python 3.11** instalado
-5. **Cuenta de Tavily** y API Key (obtén una en [tavily.com](https://tavily.com))
+4. **Python 3.11** installed
+5. **Tavily Account** and API Key (get one at [tavily.com](https://tavily.com))
 
-## 🔧 Configuración
+## 🔧 Configuration
 
-### 1. Clonar y configurar el proyecto
+### 1. Clone and setup the project
 
 ```bash
-# Crear entorno virtual
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Instalar dependencias
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configurar variables de entorno
+### 2. Configure environment variables
 
-Crea un archivo `.env` en la raíz del proyecto:
+Create a `.env` file in the project root:
 
 ```env
-TAVILY_API_KEY=tu-api-key-aqui
+TAVILY_API_KEY=your-api-key-here
 ```
 
-O exporta la variable de entorno:
+Or export the environment variable:
 
 ```bash
-export TAVILY_API_KEY="tu-api-key-aqui"
+export TAVILY_API_KEY="your-api-key-here"
 ```
 
-## 🚢 Despliegue
+## 🚢 Deployment
 
-### Desplegar a AWS
+### Deploy to AWS
 
 ```bash
-# Desplegar en staging (dev)
+# Deploy to staging (dev)
 serverless deploy
 
-# Desplegar en producción
+# Deploy to production
 serverless deploy --stage prod
 
-# Desplegar en región específica
+# Deploy to specific region
 serverless deploy --region us-west-2
 ```
 
-### Ver logs
+### View logs
 
 
 ```bash
 serverless logs -f tavilySearch --tail
 ```
 
-### Eliminar el servicio
+### Remove the service
 
 ```bash
 serverless remove
 ```
 
-## 📡 Uso de la API
+## 📡 API Usage
 
-### Endpoints Disponibles
+### Available Endpoints
 
-Después del despliegue, obtendrás estos endpoints:
+After deployment, you'll get these endpoints:
 
 ```
 POST https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/tavily/search
@@ -102,20 +102,20 @@ POST https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/tavily/crawl
 POST https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/tavily/map
 ```
 
-**💡 Nota**: Cada endpoint mapea automáticamente a su función correspondiente. Solo envía los parámetros directamente en el body (sin necesidad de `action` o `parameters`).
+**💡 Note**: Each endpoint automatically maps to its corresponding function. Just send parameters directly in the body (no need for `action` or `parameters`).
 
 ---
 
-## 1️⃣ SEARCH - Búsqueda Web Completa
+## 1️⃣ SEARCH - Complete Web Search
 
-Realiza búsquedas web con resultados detallados, respuestas generadas por IA e imágenes opcionales.
+Performs web searches with detailed results, AI-generated answers, and optional images.
 
 **Endpoint**: `POST /tavily/search`
 
 ### Request
 
 ```bash
-curl -X POST https://tu-api-endpoint/dev/tavily/search \
+curl -X POST https://your-api-endpoint/dev/tavily/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "Latest developments in quantum computing 2024",
@@ -128,19 +128,19 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
   }'
 ```
 
-### Parámetros
+### Parameters
 
-| Parámetro | Tipo | Requerido | Default | Descripción |
-|-----------|------|-----------|---------|-------------|
-| `query` | string | ✅ Sí | - | Consulta de búsqueda |
-| `search_depth` | string | No | "basic" | "basic" o "advanced" |
-| `max_results` | int | No | 5 | Máximo de resultados (1-20) |
-| `include_answer` | bool | No | false | Incluir respuesta generada por IA |
-| `include_images` | bool | No | false | Incluir imágenes relacionadas |
-| `include_raw_content` | bool | No | false | Incluir HTML crudo |
-| `include_domains` | array | No | null | Lista de dominios a incluir |
-| `exclude_domains` | array | No | null | Lista de dominios a excluir |
-| `topic` | string | No | "general" | "general" o "news" |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `query` | string | ✅ Yes | - | Search query |
+| `search_depth` | string | No | "basic" | "basic" or "advanced" |
+| `max_results` | int | No | 5 | Maximum results (1-20) |
+| `include_answer` | bool | No | false | Include AI-generated answer |
+| `include_images` | bool | No | false | Include related images |
+| `include_raw_content` | bool | No | false | Include raw HTML |
+| `include_domains` | array | No | null | List of domains to include |
+| `exclude_domains` | array | No | null | List of domains to exclude |
+| `topic` | string | No | "general" | "general" or "news" |
 
 ### Response
 
@@ -174,14 +174,14 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
 
 ---
 
-## 2️⃣ EXTRACT - Extraer Contenido de URLs
+## 2️⃣ EXTRACT - Extract Content from URLs
 
-Extrae contenido limpio y parseado de hasta 10 URLs específicas.
+Extracts clean and parsed content from up to 10 specific URLs.
 
 ### Request
 
 ```bash
-curl -X POST https://tu-api-endpoint/dev/tavily/search \
+curl -X POST https://your-api-endpoint/dev/tavily/search \
   -H "Content-Type: application/json" \
   -d '{
     "action": "extract",
@@ -195,11 +195,11 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
   }'
 ```
 
-### Parámetros
+### Parameters
 
-| Parámetro | Tipo | Requerido | Default | Descripción |
-|-----------|------|-----------|---------|-------------|
-| `urls` | array | ✅ Sí | - | Lista de URLs (máx. 10) |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `urls` | array | ✅ Yes | - | List of URLs (max. 10) |
 
 ### Response
 
@@ -231,14 +231,14 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
 
 ---
 
-## 3️⃣ CRAWL - Crawlear Sitios Web
+## 3️⃣ CRAWL - Crawl Websites
 
-Crawlea recursivamente un sitio web, extrayendo contenido de múltiples páginas.
+Recursively crawls a website, extracting content from multiple pages.
 
 ### Request
 
 ```bash
-curl -X POST https://tu-api-endpoint/dev/tavily/search \
+curl -X POST https://your-api-endpoint/dev/tavily/search \
   -H "Content-Type: application/json" \
   -d '{
     "action": "crawl",
@@ -252,15 +252,15 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
   }'
 ```
 
-### Parámetros
+### Parameters
 
-| Parámetro | Tipo | Requerido | Default | Descripción |
-|-----------|------|-----------|---------|-------------|
-| `url` | string | ✅ Sí | - | URL inicial para crawlear |
-| `max_depth` | int | No | 1 | Profundidad máxima (máx. 3) |
-| `max_pages` | int | No | 10 | Máximo de páginas (máx. 100) |
-| `include_subdomains` | bool | No | false | Incluir subdominios |
-| `exclude_patterns` | array | No | null | Patrones de URL a excluir |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `url` | string | ✅ Yes | - | Starting URL to crawl |
+| `max_depth` | int | No | 1 | Maximum depth (max. 3) |
+| `max_pages` | int | No | 10 | Maximum pages (max. 100) |
+| `include_subdomains` | bool | No | false | Include subdomains |
+| `exclude_patterns` | array | No | null | URL patterns to exclude |
 
 ### Response
 
@@ -294,14 +294,14 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
 
 ---
 
-## 4️⃣ MAP - Mapear Resultados de Búsqueda
+## 4️⃣ MAP - Map Search Results
 
-Mapea resultados de búsqueda mostrando relaciones, dominios y contexto estructurado.
+Maps search results showing relationships, domains, and structured context.
 
 ### Request
 
 ```bash
-curl -X POST https://tu-api-endpoint/dev/tavily/search \
+curl -X POST https://your-api-endpoint/dev/tavily/search \
   -H "Content-Type: application/json" \
   -d '{
     "action": "map",
@@ -315,15 +315,15 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
   }'
 ```
 
-### Parámetros
+### Parameters
 
-| Parámetro | Tipo | Requerido | Default | Descripción |
-|-----------|------|-----------|---------|-------------|
-| `query` | string | ✅ Sí | - | Consulta de búsqueda |
-| `search_depth` | string | No | "advanced" | "basic" o "advanced" |
-| `max_results` | int | No | 5 | Máximo de resultados |
-| `include_domains` | array | No | null | Dominios a incluir |
-| `exclude_domains` | array | No | null | Dominios a excluir |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `query` | string | ✅ Yes | - | Search query |
+| `search_depth` | string | No | "advanced" | "basic" or "advanced" |
+| `max_results` | int | No | 5 | Maximum results |
+| `include_domains` | array | No | null | Domains to include |
+| `exclude_domains` | array | No | null | Domains to exclude |
 
 ### Response
 
@@ -357,53 +357,53 @@ curl -X POST https://tu-api-endpoint/dev/tavily/search \
 
 ---
 
-## 🧪 Testing Local
+## 🧪 Local Testing
 
-Puedes probar las funciones localmente ejecutando:
+You can test the functions locally by running:
 
 ```bash
 python handler.py
 ```
 
-Esto ejecutará los 4 casos de prueba incluidos en el archivo.
+This will execute the 4 test cases included in the file.
 
 ---
 
-## 💡 Casos de Uso
+## 💡 Use Cases
 
 ### Search
-- Búsquedas generales en la web
-- Investigación con respuestas IA
-- Búsquedas de noticias recientes
-- Recopilación de información con imágenes
+- General web searches
+- Research with AI answers
+- Recent news searches
+- Information gathering with images
 
 ### Extract
-- Extraer artículos de blogs
-- Leer contenido de múltiples URLs
-- Parsear documentación
-- Obtener texto limpio de páginas web
+- Extract blog articles
+- Read content from multiple URLs
+- Parse documentation
+- Get clean text from web pages
 
 ### Crawl
-- Indexar documentación completa
-- Crear base de conocimientos de un sitio
-- Análisis de contenido de sitios web
-- Backup de contenido web
+- Index complete documentation
+- Create knowledge base from a site
+- Website content analysis
+- Web content backup
 
 ### Map
-- Análisis de fuentes de información
-- Visualización de dominios relacionados
-- Contexto estructurado para RAG
-- Mapeo de relaciones entre fuentes
+- Information source analysis
+- Related domain visualization
+- Structured context for RAG
+- Source relationship mapping
 
 
-## 👥 Autores
+## 👥 Authors
 
 William Ferreira, Luis Adames, Angel Moreno
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está bajo la licencia MIT.
+This project is under the MIT license.
 
 ---
 
-**Desarrollado para AWS Hackathon 2025** 🚀
+**Developed for AWS Hackathon 2025** 🚀

@@ -1,58 +1,100 @@
-# Lambda Image Generator
+# Lambda Image Generator Service
 
-Lambda function para generar imágenes usando Amazon Bedrock Nova Canvas basado en descripciones de casos de uso empresariales, con almacenamiento automático en S3.
+AWS Lambda service that generates product concept images using Amazon Bedrock Nova Canvas based on business use case descriptions, with automatic S3 storage.
 
-## 🚀 Características
+## 📋 Features
 
-- ✅ Genera imágenes usando **Amazon Bedrock Nova Canvas**
-- ✅ Análisis inteligente de casos de uso con **Amazon Nova Pro**
-- ✅ Generación de prompts optimizados automáticamente
-- ✅ Genera 3 variaciones de imágenes por solicitud
-- ✅ Sube automáticamente a S3
-- ✅ Genera presigned URLs válidas por 1 hora
-- ✅ Organización por carpetas de usuario
-- ✅ Soporte para API Gateway e invocación directa
-- ✅ Imágenes de alta calidad (1024x1024 px)
+- **🎨 AI Image Generation**: Creates images using **Amazon Bedrock Nova Canvas**
+- **🧠 Smart Analysis**: Use case analysis with **Amazon Nova Pro**
+- **✨ Auto-Optimization**: Automatically generates optimized prompts
+- **🔢 Multiple Variations**: Generates 3 image variations per request
+- **☁️ S3 Integration**: Automatic upload to S3
+- **🔗 Presigned URLs**: Valid for 1 hour
+- **📁 Organization**: User-based folder structure in S3
+- **🚀 Flexible Invocation**: API Gateway and direct Lambda support
+- **📐 High Quality**: 1024x1024 px images
 
-## 📦 Instalación
+## 🚀 Project Structure
+
+```
+.
+├── handler.py           # Main Lambda function with image generation logic
+├── serverless.yml       # Serverless Framework configuration
+├── requirements.txt     # Python dependencies
+└── README.md           # This file
+```
+
+## 📦 Prerequisites
+
+1. **AWS CLI** configured with credentials
+2. **Serverless Framework** installed:
+   ```bash
+   npm install -g serverless
+   ```
+3. **Python 3.12** installed
+4. **Amazon Bedrock** access to Nova models
+5. **S3 Bucket** for image storage
+
+## 🔧 Configuration
+
+### 1. Setup the project
 
 ```bash
-# Instalar Serverless Framework
+# Install Serverless Framework (if not installed)
 npm install -g serverless
 
-# Instalar dependencias de Python (opcional para desarrollo local)
+# Install Python dependencies (optional for local development)
 pip install -r requirements.txt
 ```
 
-## 🔧 Configuración
+### 2. Configure environment variables
 
-### Variables de Entorno
-
-Crea un archivo `.env` en la raíz del proyecto:
+Create a `.env` file in the project root:
 
 ```env
-S3_BUCKET_NAME=tu-bucket-nombre
+S3_BUCKET_NAME=your-bucket-name
 AWS_REGION=us-east-1
 ```
 
-### Configurar Credenciales AWS
+### 3. Configure AWS Credentials
 
 ```bash
-serverless config credentials --provider aws --key TU_ACCESS_KEY --secret TU_SECRET_KEY
+serverless config credentials --provider aws --key YOUR_ACCESS_KEY --secret YOUR_SECRET_KEY
 ```
 
-## 🚀 Despliegue
+## 🚢 Deployment
+
+### Deploy to AWS
 
 ```bash
+# Deploy to staging (dev)
 serverless deploy
+
+# Deploy to production
+serverless deploy --stage prod
+
+# Deploy to specific region
+serverless deploy --region us-east-1
 ```
 
-Después del despliegue, obtendrás una URL como:
+After deployment, you'll get an endpoint like:
 ```
 POST - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/generate-image
 ```
 
-## 📝 Uso
+### View logs
+
+```bash
+serverless logs -f generateImage --tail
+```
+
+### Remove the service
+
+```bash
+serverless remove
+```
+
+## 📡 API Usage
 
 ### Endpoint
 
@@ -60,23 +102,44 @@ POST - https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/generate-image
 POST https://your-api-gateway-url/generate-image
 ```
 
-### Payload
+### Request Payload
 
 ```json
 {
   "use_case": "A mobile app that helps users track their daily water intake and reminds them to stay hydrated.",
-  "user_id": "user123"  // Opcional - default: "default_user"
+  "user_id": "user123",  // Optional - default: "default_user"
+  "chat_id": "chat456"   // Optional - for context tracking
 }
 ```
 
-### Respuesta Exitosa
+### Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `use_case` | string | ✅ Yes | - | Business use case or product description |
+| `user_id` | string | No | `"default_user"` | User folder in S3 |
+| `chat_id` | string | No | null | Chat/session identifier |
+
+### Successful Response
 
 ```json
 {
-  "image_urls": [
-    "https://bucket.s3.us-east-1.amazonaws.com/user123/generated_image_123456_1.png?X-Amz-Algorithm=...",
-    "https://bucket.s3.us-east-1.amazonaws.com/user123/generated_image_123456_2.png?X-Amz-Algorithm=...",
-    "https://bucket.s3.us-east-1.amazonaws.com/user123/generated_image_123456_3.png?X-Amz-Algorithm=..."
+  "images": [
+    {
+      "image_id": "img_1234567890_1",
+      "presigned_url": "https://bucket.s3.us-east-1.amazonaws.com/user123/img_1234567890_1.png?X-Amz-Algorithm=...",
+      "description": "Sleek mobile app interface showing water intake tracker with blue gradient and hydration reminders"
+    },
+    {
+      "image_id": "img_1234567890_2",
+      "presigned_url": "https://bucket.s3.us-east-1.amazonaws.com/user123/img_1234567890_2.png?X-Amz-Algorithm=...",
+      "description": "Mobile app dashboard with water bottle visualization and daily hydration progress rings"
+    },
+    {
+      "image_id": "img_1234567890_3",
+      "presigned_url": "https://bucket.s3.us-east-1.amazonaws.com/user123/img_1234567890_3.png?X-Amz-Algorithm=...",
+      "description": "Water tracking app notification screen with reminder to drink water and hydration statistics"
+    }
   ],
   "use_case": "A mobile app that helps users track their daily water intake...",
   "user_id": "user123",
@@ -84,7 +147,7 @@ POST https://your-api-gateway-url/generate-image
 }
 ```
 
-### Respuesta de Error
+### Error Response
 
 ```json
 {
@@ -93,53 +156,65 @@ POST https://your-api-gateway-url/generate-image
 }
 ```
 
-## 🗂️ Estructura en S3
+---
+
+## 📂 S3 Storage Structure
 
 ```
-s3://{bucket_name}/
+s3://your-bucket/
 └── {user_id}/
-    └── generated_image_{seed}_{number}.png
+    ├── img_{timestamp}_1.png
+    ├── img_{timestamp}_2.png
+    └── img_{timestamp}_3.png
 ```
 
-Ejemplo:
+Example:
 ```
 s3://my-bucket/
 └── user123/
-    ├── generated_image_123456_1.png
-    ├── generated_image_123456_2.png
-    └── generated_image_123456_3.png
+    ├── img_1234567890_1.png
+    ├── img_1234567890_2.png
+    └── img_1234567890_3.png
 ```
 
-## 🎨 Ejemplos de Uso
+---
 
-### Ejemplo 1: Producto Físico
+## 🎨 Examples
 
-```json
-{
-  "use_case": "Rugged handheld device for retail shelf audits with barcode scanning and offline ERP sync capabilities.",
-  "user_id": "retail_team"
-}
+### Example 1: Physical Product
+
+```bash
+curl -X POST https://your-api-endpoint/dev/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "use_case": "Rugged handheld device for retail shelf audits with barcode scanning and offline ERP sync capabilities.",
+    "user_id": "retail_team"
+  }'
 ```
 
-### Ejemplo 2: Software Dashboard
+### Example 2: Software Dashboard
 
-```json
-{
-  "use_case": "Web application that forecasts supply chain risks with interactive scenario sliders and geospatial risk map visualization.",
-  "user_id": "analytics_team"
-}
+```bash
+curl -X POST https://your-api-endpoint/dev/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "use_case": "Web application that forecasts supply chain risks with interactive scenario sliders and geospatial risk map visualization.",
+    "user_id": "analytics_team"
+  }'
 ```
 
-### Ejemplo 3: IoT Device
+### Example 3: IoT Device
 
-```json
-{
-  "use_case": "Smart water bottle for athletes that tracks hydration levels, temperature, sends haptic reminders, and pairs with mobile app.",
-  "user_id": "fitness_team"
-}
+```bash
+curl -X POST https://your-api-endpoint/dev/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "use_case": "Smart water bottle for athletes that tracks hydration levels, temperature, sends haptic reminders, and pairs with mobile app.",
+    "user_id": "fitness_team"
+  }'
 ```
 
-### Ejemplo 4: Invocación Directa (Sin API Gateway)
+### Example 4: Direct Lambda Invocation (No API Gateway)
 
 ```python
 import boto3
@@ -157,44 +232,94 @@ response = lambda_client.invoke(
 )
 
 result = json.loads(response['Payload'].read())
-print(result['image_urls'])
+print(result['images'])
 ```
 
-## 🧪 Pruebas Locales
+---
+
+## 🧪 Local Testing
 
 ```bash
-# Activar entorno virtual
+# Activate virtual environment
 .venv\Scripts\activate  # Windows
 source .venv/bin/activate  # Linux/Mac
 
-# Ejecutar prueba local
+# Run local test
 python handler.py
 ```
 
-## 🤖 Modelos de IA Utilizados
+---
 
-### Amazon Bedrock Nova Pro (Texto)
+## 💡 Use Cases
+
+### Product Visualization
+- Generate concept images for physical products
+- Visualize hardware prototypes
+- Create product mockups for presentations
+
+### Software UI/UX
+- Dashboard and interface concepts
+- Mobile app screen designs
+- Web application layouts
+
+### IoT & Smart Devices
+- Smart device concepts
+- Wearable technology designs
+- Connected product visualizations
+
+### Marketing & Pitches
+- Investor presentation visuals
+- Product pitch materials
+- Marketing campaign concepts
+
+---
+
+## 🤖 AI Models Used
+
+### Amazon Bedrock Nova Pro (Text)
 - **Model ID**: `amazon.nova-pro-v1:0`
-- **Propósito**: Análisis de casos de uso y generación de prompts optimizados
-- **Características**: 
-  - Comprensión avanzada del contexto empresarial
-  - Generación de prompts estructurados
-  - Output en formato JSON
+- **Purpose**: Use case analysis and optimized prompt generation
+- **Features**: 
+  - Advanced business context understanding
+  - Structured prompt generation
+  - JSON output format
 
-### Amazon Bedrock Nova Canvas (Imágenes)
+### Amazon Bedrock Nova Canvas (Images)
 - **Model ID**: `amazon.nova-canvas-v1:0`
-- **Propósito**: Generación de imágenes de productos
-- **Especificaciones**:
-  - Resolución: 1024x1024 px
-  - Calidad: Standard
-  - Formato: PNG
-  - Cantidad: 3 imágenes por solicitud
+- **Purpose**: Product image generation
+- **Specifications**:
+  - Resolution: 1024x1024 px
+  - Quality: Standard
+  - Format: PNG
+  - Quantity: 3 images per request
 
-## 📄 Permisos IAM Requeridos
+---
 
-La Lambda necesita los siguientes permisos:
+## ⚙️ Technical Details
 
-### Amazon Bedrock
+### Lambda Configuration
+- **Memory**: 1024 MB
+- **Timeout**: 300 seconds (5 minutes)
+- **Runtime**: Python 3.12
+- **Architecture**: x86_64
+
+### API Gateway
+- **CORS**: Enabled for all origins (`*`)
+- **Binary Media Types**: `image/png`, `image/jpeg`, `application/json`
+- **Methods**: POST, OPTIONS
+
+### Dependencies
+```txt
+boto3>=1.34.0
+botocore>=1.34.0
+python-dotenv>=1.0.0
+```
+
+**Note**: `boto3` and `botocore` are already included in AWS Lambda environment.
+
+### IAM Permissions Required
+
+#### Amazon Bedrock
 ```json
 {
   "Effect": "Allow",
@@ -211,7 +336,7 @@ La Lambda necesita los siguientes permisos:
 }
 ```
 
-### Amazon S3
+#### Amazon S3
 ```json
 {
   "Effect": "Allow",
@@ -228,52 +353,18 @@ La Lambda necesita los siguientes permisos:
 }
 ```
 
-### CloudWatch Logs
-```json
-{
-  "Effect": "Allow",
-  "Action": [
-    "logs:CreateLogGroup",
-    "logs:CreateLogStream",
-    "logs:PutLogEvents"
-  ],
-  "Resource": "arn:aws:logs:*:*:*"
-}
-```
-
-## ⚙️ Configuración de Lambda
-
-### Recursos
-- **Memoria**: 1024 MB
-- **Timeout**: 300 segundos (5 minutos)
-- **Runtime**: Python 3.12
-- **Architecture**: x86_64
-
-### API Gateway
-- **CORS**: Habilitado para todos los orígenes (`*`)
-- **Binary Media Types**: `image/png`, `image/jpeg`, `application/json`
-- **Métodos**: POST, OPTIONS
-
-## 📚 Dependencias
-
-```txt
-boto3>=1.34.0
-botocore>=1.34.0
-python-dotenv>=1.0.0
-```
-
-**Nota**: `boto3` y `botocore` ya vienen incluidos en el entorno de AWS Lambda, por lo que no es necesario empaquetarlos para producción.
+---
 
 ## 🎯 Prompt Engineering
 
-La función utiliza un sistema de prompt engineering avanzado con:
+The function uses an advanced prompt engineering system with:
 
-1. **Few-shot Learning**: Ejemplos de productos físicos, dashboards y dispositivos IoT
-2. **Structured Output**: Prompts y negativos en formato JSON estructurado
-3. **Caption-Style Prompts**: Descripciones naturales en lugar de comandos
-4. **Negative Prompts**: Exclusión de defectos de calidad, artefactos y estilos no deseados
+1. **Few-shot Learning**: Examples of physical products, dashboards, and IoT devices
+2. **Structured Output**: Prompts and negatives in JSON format
+3. **Caption-Style Prompts**: Natural descriptions instead of commands
+4. **Negative Prompts**: Exclusion of quality defects, artifacts, and unwanted styles
 
-### Anatomía de un Prompt Generado
+### Anatomy of a Generated Prompt
 
 ```json
 {
@@ -282,87 +373,92 @@ La función utiliza un sistema de prompt engineering avanzado con:
 }
 ```
 
-## 🔒 Seguridad
+---
 
-- ✅ URLs pre-firmadas con expiración de 1 hora
-- ✅ No requiere bucket S3 público
-- ✅ Acceso temporal sin credenciales
-- ✅ CORS configurado para seguridad
-- ✅ Validación de parámetros de entrada
+## 🔒 Security
 
-## 🚨 Limitaciones y Consideraciones
+- ✅ Presigned URLs with 1-hour expiration
+- ✅ No public S3 bucket required
+- ✅ Temporary access without credentials
+- ✅ CORS configured for security
+- ✅ Input parameter validation
 
-1. **Presigned URLs**: Expiran después de 1 hora
-2. **Timeout**: La generación puede tardar hasta 2-3 minutos por solicitud
-3. **Costos**: 
-   - Amazon Bedrock cobra por tokens (texto) e imágenes generadas
-   - S3 cobra por almacenamiento y transferencia
-4. **Límites de Bedrock**: Consultar cuotas de servicio de AWS
-5. **Región**: Los modelos Nova deben estar disponibles en la región seleccionada
+---
 
-## 📊 Monitoreo
+## 🚨 Limitations and Considerations
 
-### Ver Logs en Tiempo Real
+1. **Presigned URLs**: Expire after 1 hour
+2. **Timeout**: Generation can take up to 2-3 minutes per request
+3. **Costs**: 
+   - Amazon Bedrock charges per token (text) and generated images
+   - S3 charges for storage and transfer
+4. **Bedrock Limits**: Check AWS service quotas
+5. **Region**: Nova models must be available in selected region (us-east-1 recommended)
+
+---
+
+## 📊 Monitoring
+
+### View Real-time Logs
 
 ```bash
 serverless logs -f generateImage --tail
 ```
 
 ### CloudWatch Metrics
-- Invocaciones
-- Duración
-- Errores
+- Invocations
+- Duration
+- Errors
 - Throttles
 
-## 🔄 Comandos Útiles
+---
+
+## 🔄 Useful Commands
 
 ```bash
-# Ver información del deployment
+# View deployment information
 serverless info
 
-# Invocar la función directamente
-serverless invoke -f generateImage --data '{"use_case":"test","user_id":"test"}'
+# Invoke function directly
+serverless invoke -f generateImage --data '{"use_case":"test product","user_id":"test"}'
 
-# Ver logs
+# View logs
 serverless logs -f generateImage
 
-# Eliminar el deployment
+# Remove deployment
 serverless remove
 ```
+
+---
 
 ## 🐛 Troubleshooting
 
 ### Error: "Missing required parameter: use_case"
-- **Causa**: El payload no incluye el campo `use_case`
-- **Solución**: Asegúrate de enviar el campo requerido en el body
+- **Cause**: Payload doesn't include `use_case` field
+- **Solution**: Ensure required field is sent in body
 
 ### Error: "Failed to parse JSON from model response"
-- **Causa**: El modelo Nova Pro no retornó JSON válido
-- **Solución**: Revisa los prompts del sistema o intenta con un caso de uso más claro
+- **Cause**: Nova Pro didn't return valid JSON
+- **Solution**: Review system prompts or try with a clearer use case
 
-### Error: "Access Denied" en S3
-- **Causa**: La Lambda no tiene permisos para escribir en S3
-- **Solución**: Verifica los permisos IAM del rol de Lambda
+### Error: "Access Denied" in S3
+- **Cause**: Lambda doesn't have permissions to write to S3
+- **Solution**: Verify Lambda role IAM permissions
 
 ### Error: "Model not found"
-- **Causa**: Los modelos Nova no están disponibles en la región
-- **Solución**: Cambia a `us-east-1` o verifica disponibilidad regional
-
-## 📞 Soporte
-
-Para problemas o preguntas:
-- Revisa los logs de CloudWatch
-- Verifica la configuración de variables de entorno
-- Confirma que los modelos Bedrock están habilitados en tu cuenta
-
-## 👥 Autores
-
-William Ferreira, Luis Adames, Angel Moreno
-
-## 📄 Licencia
-
-Este proyecto está bajo la licencia MIT.
+- **Cause**: Nova models aren't available in the region
+- **Solution**: Change to `us-east-1` or verify regional availability
 
 ---
 
-**Desarrollado para AWS Hackathon 2025** 🚀
+## 👥 Authors
+
+William Ferreira, Luis Adames, Angel Moreno
+
+## 📄 License
+
+This project is under the MIT license.
+
+---
+
+**Developed for AWS Hackathon 2025** 🚀
