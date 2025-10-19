@@ -3,6 +3,7 @@ export { chatsService } from './chats';
 export { messagesService } from './messages';
 export { chatAgentService } from './chat-agent';
 export { documentsService } from './documents';
+export { imagesService } from './images';
 
 // Export API clients
 export { apiClient, chatAgentClient } from '../api-client';

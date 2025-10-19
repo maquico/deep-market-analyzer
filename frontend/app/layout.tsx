@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   title: 'Deep Market Analyzer',
   description: 'AI-powered competitive analysis and market research platform',
   generator: 'Next.js',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icono.ico', sizes: 'any' },
+    ],
+  },
 }
 
 export default function RootLayout({
