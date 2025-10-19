@@ -1,72 +1,95 @@
-# Guía: Configurar AWS Secrets Manager
+# Guide: Configuring AWS Secrets Manager
 
-## 📋 Resumen
+## 📋 Overview
 
-Este proyecto usa **AWS Secrets Manager** en producción para manejar secretos de forma segura, y archivos `.env` para desarrollo local.
+This project uses **AWS Secrets Manager** in production for secure secret management, and `.env` files for local development.
 
 ---
 
-## 🏠 Desarrollo Local (usando .env)
+## 🏠 Local Development (using .env)
 
-1. Copia el archivo de ejemplo:
+1. Copy the example file:
    ```bash
    cp .env.example .env
    ```
 
-2. Edita `.env` con tus valores reales:
+2. Edit `.env` with your actual values:
    ```bash
    ENVIRONMENT=development
    AWS_REGION=us-east-1
-   DYNAMO_CHATS_TABLE_NAME=mi-tabla-chats
-   # ... otros valores
+   
+   # DynamoDB Tables
+   DYNAMO_CHATS_TABLE_NAME=deep-market-analyzer-chats
+   DYNAMO_USERS_TABLE_NAME=deep-market-analyzer-users
+   DYNAMO_USERNAMES_TABLE_NAME=deep-market-analyzer-usernames
+   DYNAMO_MESSAGES_TABLE_NAME=deep-market-analyzer-messages
+   DYNAMO_DOCUMENTS_TABLE_NAME=deep-market-analyzer-documents
+   DYNAMO_IMAGES_TABLE_NAME=deep-market-analyzer-images
+   
+   # Bedrock Agent Core
+   MEMORY_ID_BEDROCK_AGENT_CORE=your-memory-id
+   ARN_BEDROCK_AGENTCORE=arn:aws:bedrock:us-east-1:account-id:agent-alias/agent-id/alias-id
+   
+   # S3 Storage
+   S3_BUCKET_NAME=your-bucket-name
    ```
 
-3. La aplicación cargará automáticamente desde `.env`
+3. The application will automatically load from `.env`
 
 ---
 
-## ☁️ Producción (usando AWS Secrets Manager)
+## ☁️ Production (using AWS Secrets Manager)
 
-### Paso 1: Crear el Secret en AWS
+### Step 1: Create the Secret in AWS
 
-**Opción A: Usando AWS Console**
+**Option A: Using AWS Console**
 
-1. Ve a AWS Secrets Manager en la consola
-2. Click en "Store a new secret"
-3. Selecciona "Other type of secret"
-4. En "Key/value pairs", agrega tus secretos en formato JSON o key-value:
+1. Go to AWS Secrets Manager in the console
+2. Click "Store a new secret"
+3. Select "Other type of secret"
+4. In "Key/value pairs", add your secrets in JSON or key-value format:
    ```json
    {
      "AWS_REGION": "us-east-1",
      "DYNAMO_CHATS_TABLE_NAME": "prod-chats-table",
      "DYNAMO_USERS_TABLE_NAME": "prod-users-table",
      "DYNAMO_USERNAMES_TABLE_NAME": "prod-usernames-table",
-     "DYNAMO_MESSAGES_TABLE_NAME": "prod-messages-table"
+     "DYNAMO_MESSAGES_TABLE_NAME": "prod-messages-table",
+     "DYNAMO_DOCUMENTS_TABLE_NAME": "prod-documents-table",
+     "DYNAMO_IMAGES_TABLE_NAME": "prod-images-table",
+     "MEMORY_ID_BEDROCK_AGENT_CORE": "your-memory-id",
+     "ARN_BEDROCK_AGENTCORE": "arn:aws:bedrock:us-east-1:account-id:agent-alias/agent-id/alias-id",
+     "S3_BUCKET_NAME": "your-production-bucket"
    }
    ```
-5. Nombre del secret: `hackaton-api-secrets` (o el que definas en AWS_SECRET_NAME)
-6. Configura rotación (opcional)
-7. Guarda el secret
+5. Secret name: `hackaton-api-secrets` (or as defined in AWS_SECRET_NAME)
+6. Configure rotation (optional)
+7. Save the secret
 
-**Opción B: Usando AWS CLI**
+**Option B: Using AWS CLI**
 
 ```bash
 aws secretsmanager create-secret \
     --name hackaton-api-secrets \
-    --description "Secretos para la API del hackaton" \
+    --description "Secrets for Deep Market Analyzer API" \
     --secret-string '{
       "AWS_REGION": "us-east-1",
       "DYNAMO_CHATS_TABLE_NAME": "prod-chats-table",
       "DYNAMO_USERS_TABLE_NAME": "prod-users-table",
       "DYNAMO_USERNAMES_TABLE_NAME": "prod-usernames-table",
-      "DYNAMO_MESSAGES_TABLE_NAME": "prod-messages-table"
+      "DYNAMO_MESSAGES_TABLE_NAME": "prod-messages-table",
+      "DYNAMO_DOCUMENTS_TABLE_NAME": "prod-documents-table",
+      "DYNAMO_IMAGES_TABLE_NAME": "prod-images-table",
+      "MEMORY_ID_BEDROCK_AGENT_CORE": "your-memory-id",
+      "ARN_BEDROCK_AGENTCORE": "arn:aws:bedrock:us-east-1:account-id:agent-alias/agent-id/alias-id",
+      "S3_BUCKET_NAME": "your-production-bucket"
     }' \
     --region us-east-1
 ```
 
-### Paso 2: Configurar Permisos IAM
+### Step 2: Configure IAM Permissions
 
-Tu Lambda o instancia EC2 necesita permisos para leer el secret:
+Your Lambda or EC2 instance needs permissions to read the secret:
 
 ```json
 {
@@ -84,130 +107,127 @@ Tu Lambda o instancia EC2 necesita permisos para leer el secret:
 }
 ```
 
-### Paso 3: Configurar Variables de Entorno en Lambda/EC2
+### Step 3: Configure Environment Variables in Lambda/EC2
 
-Solo necesitas estas dos variables de entorno:
+You only need these two environment variables:
 
 ```bash
 ENVIRONMENT=production
 AWS_SECRET_NAME=hackaton-api-secrets
 ```
 
-La aplicación automáticamente:
-- Detectará que está en producción
-- Se conectará a Secrets Manager
-- Cargará todos los secretos del JSON
+The application will automatically:
+- Detect it's in production
+- Connect to Secrets Manager
+- Load all secrets from the JSON
 
 ---
 
-## 🔄 Actualizar Secretos en Producción
+## 🔄 Updating Secrets in Production
 
-**Usando AWS Console:**
-1. Ve a Secrets Manager
-2. Selecciona tu secret
-3. Click en "Retrieve secret value"
-4. Click en "Edit"
-5. Modifica los valores
-6. Guarda
+**Using AWS Console:**
+1. Go to Secrets Manager
+2. Select your secret
+3. Click "Retrieve secret value"
+4. Click "Edit"
+5. Modify the values
+6. Save
 
-**Usando AWS CLI:**
+**Using AWS CLI:**
 ```bash
 aws secretsmanager update-secret \
     --secret-id hackaton-api-secrets \
     --secret-string '{
       "AWS_REGION": "us-east-1",
-      "DYNAMO_CHATS_TABLE_NAME": "nuevo-valor",
+      "DYNAMO_CHATS_TABLE_NAME": "new-value",
       ...
     }'
 ```
 
-**Reinicia tu aplicación** para que cargue los nuevos valores.
+**Restart your application** to load the new values.
 
 ---
 
-## 🔐 Buenas Prácticas
+## 🔐 Best Practices
 
-✅ **SÍ hacer:**
-- Usar Secrets Manager para producción
-- Usar `.env` solo en desarrollo local
-- Agregar `.env` al `.gitignore`
-- Usar IAM roles con permisos mínimos necesarios
-- Habilitar rotación automática de secretos cuando sea posible
-- Usar diferentes secrets para dev/staging/prod
+✅ **DO:**
+- Use Secrets Manager for production
+- Use `.env` only for local development
+- Add `.env` to `.gitignore`
+- Use IAM roles with minimum necessary permissions
+- Enable automatic secret rotation when possible
+- Use different secrets for dev/staging/prod
 
-❌ **NO hacer:**
-- Commitear archivos `.env` al repositorio
-- Hardcodear secretos en el código
-- Usar el mismo secret en múltiples entornos
-- Dar permisos excesivos de IAM
+❌ **DON'T:**
+- Commit `.env` files to the repository
+- Hardcode secrets in code
+- Use the same secret across multiple environments
+- Give excessive IAM permissions
 
 ---
 
-## 🧪 Probar Localmente con Secrets Manager
+## 🧪 Testing Locally with Secrets Manager
 
-Si quieres probar la carga desde Secrets Manager localmente:
+If you want to test loading from Secrets Manager locally:
 
-1. Configura AWS CLI con credenciales válidas:
+1. Configure AWS CLI with valid credentials:
    ```bash
    aws configure
    ```
 
-2. Cambia el `.env`:
+2. Update your `.env`:
    ```bash
    ENVIRONMENT=production
    AWS_SECRET_NAME=hackaton-api-secrets
    ```
 
-3. Ejecuta la aplicación - cargará desde Secrets Manager
+3. Run the application - it will load from Secrets Manager
 
 ---
 
-## 📝 Agregar Nuevos Secretos
+## 📝 Adding New Secrets
 
-1. Agrega el campo en `config.py` dentro de `_load_from_secrets_manager()` y `_load_from_env()`:
+1. Add the field in `config.py` within `_load_from_secrets_manager()` and `_load_from_env()`:
    ```python
-   self.NEW_SECRET = secret.get('NEW_SECRET')  # en _load_from_secrets_manager
-   self.NEW_SECRET = os.getenv('NEW_SECRET')   # en _load_from_env
+   # In _load_from_secrets_manager
+   self.NEW_SECRET = secret.get('NEW_SECRET')
+   
+   # In _load_from_env
+   self.NEW_SECRET = os.getenv('NEW_SECRET')
    ```
 
-2. Actualiza `.env.example`:
+2. Update `.env.example`:
    ```bash
-   NEW_SECRET=valor-ejemplo
+   NEW_SECRET=example-value
    ```
 
-3. Actualiza el secret en AWS Secrets Manager con el nuevo campo
-
----
-
-## 💰 Costos
-
-AWS Secrets Manager cobra:
-- $0.40 por secret por mes
-- $0.05 por cada 10,000 llamadas a la API
-
-Para una API con tráfico moderado, el costo mensual suele ser < $1 USD.
+3. Update the secret in AWS Secrets Manager with the new field
 
 ---
 
 ## 🆘 Troubleshooting
 
 **Error: "Secret not found"**
-- Verifica que el nombre del secret sea correcto
-- Verifica que estés en la región correcta
-- Verifica los permisos IAM
+- Verify the secret name is correct
+- Verify you're in the correct region
+- Check IAM permissions
 
 **Error: "Access Denied"**
-- Revisa los permisos IAM de tu Lambda/EC2
-- Asegúrate de tener `secretsmanager:GetSecretValue`
+- Review IAM permissions for your Lambda/EC2
+- Ensure you have `secretsmanager:GetSecretValue`
 
-**La app no carga los secretos**
-- Verifica que `ENVIRONMENT=production`
-- Revisa los logs de la aplicación
-- Verifica la conexión de red a AWS
+**Application doesn't load secrets**
+- Verify `ENVIRONMENT=production`
+- Check application logs
+- Verify network connection to AWS
 
 ---
 
-## 📚 Referencias
+## 📚 References
 
 - [AWS Secrets Manager Documentation](https://docs.aws.amazon.com/secretsmanager/)
 - [Boto3 Secrets Manager](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/secretsmanager.html)
+
+---
+
+**Developed for AWS Hackathon 2025** 🚀
