@@ -14,3 +14,4 @@ users_table = dynamodb.Table(config.DYNAMO_USERS_TABLE_NAME) if config.DYNAMO_US
 usernames_table = dynamodb.Table(config.DYNAMO_USERNAMES_TABLE_NAME) if config.DYNAMO_USERNAMES_TABLE_NAME else None
 messages_table = dynamodb.Table(config.DYNAMO_MESSAGES_TABLE_NAME) if config.DYNAMO_MESSAGES_TABLE_NAME else None
 documents_table = dynamodb.Table(config.DYNAMO_DOCUMENTS_TABLE_NAME) if config.DYNAMO_DOCUMENTS_TABLE_NAME else None
+images_table = dynamodb.Table(config.DYNAMO_IMAGES_TABLE_NAME) if config.DYNAMO_IMAGES_TABLE_NAME else None

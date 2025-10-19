@@ -195,10 +195,15 @@ async def message_with_bot_stream(request: MessageRequest):
                 
                 chunk = evt_dict.get("message", "")
                 chunk_data = evt_dict.get("data", {})
+                document_id = evt_dict.get("document_id", None)
+                images = evt_dict.get("images", None)
                 if chunk:
                     yield _create_sse_message('text', content=chunk)
-                if chunk_data:
+                elif document_id:
                     yield _create_sse_message('document', document=chunk_data)
+                elif images:
+                    yield _create_sse_message('images', images=images)
+
 
             # Send completion signal
             yield _create_sse_message('done', chat_id=chat_id)

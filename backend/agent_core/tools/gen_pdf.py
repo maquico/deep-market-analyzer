@@ -147,6 +147,7 @@ def call_pdf_gateway(data=None, template=template, html_content=None) -> dict:
     return {"ok": False, "response": resp.text}
 
 def extract_info_from_messages(messages: list[AnyMessage],
+                               query: str,
                                model_id: str = "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
                                temperature: float = 0.3) -> str:
     "Extracts the relevant information from the messages to be included in the report"
@@ -164,7 +165,7 @@ def extract_info_from_messages(messages: list[AnyMessage],
 
     for m in messages:
         conversation = conversation + f"<{m.type}>\n{m.content}\n</{m.type}>\n"
-    report_info = method_chain.invoke({"conversation": conversation})
+    report_info = method_chain.invoke({"conversation": conversation, "query": query})
     return report_info
 
 def generate_image_query(info: str,
@@ -250,15 +251,17 @@ def build_final_report(report: BaseReportDefinition, images: list) -> FinalRepor
 
 
 def execute_pdf_report_generation_flow(messages: list[AnyMessage],
-                  chat_id: str,
-                  user_id: str,
-                  extract_model: ModelInput,
-                  images_query_model: ModelInput,
-                  report_def_model: ModelInput) -> dict:
+                                       query: str,
+                                       chat_id: str,
+                                       user_id: str,
+                                       extract_model: ModelInput,
+                                       images_query_model: ModelInput,
+                                       report_def_model: ModelInput) -> dict:
     "Create a report from the messages"
 
     try:
         info = extract_info_from_messages(messages=messages,
+                                          query=query,
                                           model_id=extract_model.model_id,
                                           temperature=extract_model.temperature)
         #print("\n\nExtracted info:", info)
