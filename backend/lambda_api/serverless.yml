@@ -32,6 +32,19 @@ provider:
             - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-messages/index/*
             - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-documents
             - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-documents/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-images
+            - arn:aws:dynamodb:${self:provider.region}:*:table/deep-market-analyzer-images/index/*
+        
+        # Permisos para S3 (presigned URLs)
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::aws-s3-images-hackaton/*
+            - arn:aws:s3:::aws-s3-images-hackaton
         
         # Permisos para AWS Secrets Manager
         - Effect: Allow

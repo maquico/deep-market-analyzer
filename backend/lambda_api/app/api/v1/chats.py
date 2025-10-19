@@ -55,7 +55,7 @@ def get_chat(chat_id: str):
                     IndexName="chat_id-index",
                     KeyConditionExpression=Key('chat_id').eq(chat_id)
                 )
-                print(msg_response.get("Items", []))
+                # print(msg_response.get("Items", []))
                 messages = [ChatMessage(**msg) for msg in msg_response.get("Items", [])]
                 item["messages"] = messages
             return Chat(**item)

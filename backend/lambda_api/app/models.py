@@ -50,6 +50,7 @@ class Image(BaseModel):
     s3_key: Optional[str] = None
     description: Optional[str] = None
     created_at: str
+    image_presigned_url: Optional[str] = None
 
 
 class MessageRequest(BaseModel):
@@ -64,3 +65,11 @@ class MessageResponse(BaseModel):
     success: bool
     user_id: Optional[str] = None
     message_id: Optional[str] = None
+
+class Document(BaseModel):
+    document_id: str
+    chat_id: str
+    user_id: str
+    s3_key: Optional[str] = None
+    created_at: Optional[str] = None
+    pdf_presigned_url: Optional[str] = None
