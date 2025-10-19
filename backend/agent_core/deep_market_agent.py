@@ -8,6 +8,7 @@ from langchain_core.stores import BaseStore
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langgraph.graph.message import add_messages
 from langgraph.types import Command
+from langgraph.constants import END
 from langgraph_checkpoint_aws import AgentCoreMemorySaver, AgentCoreMemoryStore
 from typing import TypedDict, Annotated
 from langchain_aws import ChatBedrock
@@ -87,16 +88,19 @@ def create_agent(client,
         namespace = (actor_id, thread_id)
 
         messages = state.get("messages", [])
-        # Save the last AI message we see after LLM invocation
+        # Save the last AI messages we see after LLM invocation
+        final_message_content = ""
         for msg in reversed(messages):
-            if isinstance(msg, AIMessage):
-                #print("POST MODEL HOOK MESSAGE: ", msg)
-                content = msg.content[0].get("text", None)
+            # Merge from the last human message all AI messages into one
+            if isinstance(msg, AIMessage):  
                 store.put(namespace, str(uuid.uuid4()), {"message": msg})
-                if content:
-                    final_message = {"content": content, "sender": "ASSISTANT"}
-                    add_message_to_chat(session_id, final_message)
+                final_message_content += msg.content[0].get("text", "") + "\n"
+            elif isinstance(msg, HumanMessage):
+                print("Reached last human message, stopping AI message save.", msg)
                 break
+
+        final_message = {"content": final_message_content, "sender": "AI"}
+        add_message_to_chat(session_id, final_message)
 
         return {"messages": messages}
     
@@ -203,9 +207,11 @@ def create_agent(client,
     graph_builder.add_conditional_edges(
         "chatbot",
         tools_condition,
+        {"__end__": "post_model_hook",
+         "tools": "tools"}
     )
     graph_builder.add_edge("pre_model_hook", "chatbot")
-    graph_builder.add_edge("chatbot", "post_model_hook")
+    graph_builder.add_edge("post_model_hook", END)
     graph_builder.add_edge("tools", "chatbot")
     
     # Set entry point

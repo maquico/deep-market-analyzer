@@ -28,6 +28,7 @@ async def invoke_agent(prompt: str,
     # Process and print the response
     if "text/event-stream" in response.get("contentType", ""):
         print("Streaming response received")
+        #print(response)
         for line in response["response"].iter_lines(chunk_size=1):
             if line:
                 line = line.decode("utf-8")
@@ -51,8 +52,8 @@ async def invoke_agent(prompt: str,
 if __name__ == "__main__":
     import asyncio
     async def main():
-        prompts = ["Hello my name is Angel",
-                   #"what are my competitors? My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
+        prompts = [#"Hello my name is Angel",
+                   "what are my competitors? My company is a startup in the e-commerce sector specializing in handmade crafts. We focus on unique, artisanal products that appeal to niche markets. Our main competitors are Etsy and local craft fairs.",
                    #"what are my competitors?",
                    #"yes please research them",
                    #"build the report based on that info",
