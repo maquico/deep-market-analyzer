@@ -398,7 +398,7 @@ This will execute the 4 test cases included in the file.
 
 ## 👥 Authors
 
-William Ferreira, Luis Adames, Angel Moreno
+Angel Moreno, Luis Adames, William Ferreira
 
 ## 📄 License
 

@@ -381,7 +381,7 @@ api_router.include_router(
 
 ## 👥 Authors
 
-William Ferreira, Luis Adames, Angel Moreno
+Angel Moreno, Luis Adames, William Ferreira
 
 ## 📄 License
 
