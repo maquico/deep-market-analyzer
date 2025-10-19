@@ -46,7 +46,7 @@ async def invoke_agent(prompt: str,
     if "text/event-stream" in response.get("contentType", ""):
         print("Streaming response received")
         for line in response["response"].iter_lines(chunk_size=1):
-            print(f"Raw line: {line}")
+            # print(f"Raw line: {line}")
             if line:
                 line = line.decode("utf-8")
                 # print(f"Received line: {line}")
