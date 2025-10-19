@@ -36,6 +36,7 @@ class DeepMarketAgentState(TypedDict):
     user_id: str
     pdf_document_id: str
     pdf_presigned_url: str
+    images: list
 
 
 def create_agent(client,
@@ -113,13 +114,17 @@ def create_agent(client,
         return str(memories)
     
     @tool
-    def generate_image(image_description: str):
+    def generate_image(image_description: str, tool_call_id: Annotated[str, InjectedToolCallId]):
         """Tool used to generate an image based on user input about products or services ideas.
         Use this tool:
         - If the user explicitly requests an image.""" 
         result = call_img_gateway(use_case=image_description, user_id=actor_id, chat_id=session_id)  
-        return result
-    
+        images = result.get("images", [])
+        return Command(update={
+            "messages": [ToolMessage(content="Images generated successfully.", tool_call_id=tool_call_id)],
+            "images": images
+        })
+
     @tool
     def research_web(query: str):
         """Tool used to perform web searches to find relevant and recent information about markets, competitors, trends, and more.
@@ -249,7 +254,8 @@ async def stream_invoke_langgraph_agent(payload, agent):
     async for event in agent.astream_events({"messages": [HumanMessage(content=user_input)],
                                              "user_id": actor_id,
                                              "pdf_document_id": None,
-                                             "pdf_presigned_url": None},
+                                             "pdf_presigned_url": None,
+                                             "images": []},
                                             config={"recursion_limit": 50,
                                                     "configurable": {"actor_id": actor_id, "thread_id": session_id}}):
         if event["event"] == "on_chat_model_stream" and event["metadata"].get("langgraph_node", '') in nodes_to_stream:
@@ -264,14 +270,16 @@ async def stream_invoke_langgraph_agent(payload, agent):
                 yield {"message": chunk}
 
     final_state = agent.get_state({"configurable": {"actor_id": actor_id, "thread_id": session_id}})
-    if final_state and (final_state.values.get("pdf_document_id", None) or final_state.values.get("pdf_presigned_url", None)):
+    if final_state and (final_state.values.get("images", None) or final_state.values.get("pdf_document_id", None) or final_state.values.get("pdf_presigned_url", None)):
         document_id = final_state.values.get("pdf_document_id", None)
         pdf_presigned_url = final_state.values.get("pdf_presigned_url", None)
+        images = final_state.values.get("images", None)
         doc_data = {}
-        if document_id:
+        if document_id and pdf_presigned_url:
             doc_data["document_id"] = document_id
-        if pdf_presigned_url:
             doc_data["pdf_report_link"] = pdf_presigned_url
+        elif images:
+            doc_data["images"] = images 
         yield {"message": "", "data": doc_data}
 
 
