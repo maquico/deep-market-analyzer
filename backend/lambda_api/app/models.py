@@ -42,15 +42,14 @@ class User(BaseModel):
     created_at: str
     username: str
 
-class Document(BaseModel):
-    document_id: str
+class Image(BaseModel):
+    image_id: str
     chat_id: str
     user_id: str
-    name: str
-    s3_path: Optional[str] = None
-    uploaded_at: str
-    pdf_url: Optional[str] = None
-    pdf_presigned_url: Optional[str] = None
+    s3_bucket: Optional[str] = None
+    s3_key: Optional[str] = None
+    description: Optional[str] = None
+    created_at: str
 
 
 class MessageRequest(BaseModel):

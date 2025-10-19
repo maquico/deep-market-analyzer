@@ -57,6 +57,7 @@ class Config:
                 self.DYNAMO_DOCUMENTS_TABLE_NAME = secret.get('DYNAMO_DOCUMENTS_TABLE_NAME')
                 self.MEMORY_ID_BEDROCK_AGENT_CORE = secret.get('MEMORY_ID_BEDROCK_AGENT_CORE')
                 self.ARN_BEDROCK_AGENTCORE = secret.get('ARN_BEDROCK_AGENTCORE')
+                self.DYNAMO_IMAGES_TABLE_NAME = secret.get('DYNAMO_IMAGES_TABLE_NAME')
                 
                 # Puedes agregar más secretos aquí
                 # self.DATABASE_URL = secret.get('DATABASE_URL')
@@ -78,6 +79,7 @@ class Config:
         self.DYNAMO_MESSAGES_TABLE_NAME = os.getenv("DYNAMO_MESSAGES_TABLE_NAME")
         self.DYNAMO_DOCUMENTS_TABLE_NAME = os.getenv("DYNAMO_DOCUMENTS_TABLE_NAME")
         self.MEMORY_ID_BEDROCK_AGENT_CORE = os.getenv("MEMORY_ID_BEDROCK_AGENT_CORE")
+        self.DYNAMO_IMAGES_TABLE_NAME = os.getenv("DYNAMO_IMAGES_TABLE_NAME")
         self.ARN_BEDROCK_AGENTCORE = os.getenv("ARN_BEDROCK_AGENTCORE")
         
         print(f"📝 Configuración cargada desde variables de entorno (.env)")
