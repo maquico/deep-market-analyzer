@@ -12,6 +12,7 @@ export const API_ROUTES = {
     GET_BY_USER: (userId: string) => `/api/v1/chats/user/${userId}`,
     CREATE: '/api/v1/chats',
     DELETE: (chatId: string) => `/api/v1/chats/${chatId}`,
+    UPDATE: (chatId: string) => `/api/v1/chats/${chatId}`,
   },
 
   // Message routes
@@ -29,10 +30,19 @@ export const API_ROUTES = {
     GET_BY_ID: (documentId: string) => `/api/v1/documents/${documentId}`,
   },
 
+  // Image routes
+  IMAGES: {
+    BASE: '/api/v1/images',
+    GET_BY_CHAT: (chatId: string) => `/api/v1/images/chat/${chatId}`,
+    GET_BY_USER: (userId: string) => `/api/v1/images/user/${userId}`,
+    GET_BY_ID: (imageId: string) => `/api/v1/images/${imageId}`,
+  },
+
   // Agent routes
   AGENT: {
     BASE: '/api/v1/agent',
     MESSAGE_WITH_BOT: '/api/v1/agent/message_with_bot',
+    MESSAGE_WITH_BOT_STREAM: '/api/v1/agent/message_with_bot_stream',
   },
 
   // User routes

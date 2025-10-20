@@ -44,4 +44,16 @@ export const chatsService = {
     const response = await apiClient.delete<{ message: string }>(API_ROUTES.CHATS.DELETE(chatId));
     return response.data;
   },
+
+  /**
+   * Update chat name
+   */
+  updateChatName: async (chatId: string, chatName: string): Promise<Chat> => {
+    const response = await apiClient.patch<Chat>(API_ROUTES.CHATS.UPDATE(chatId), null, {
+      params: { 
+        chat_name: chatName 
+      }
+    });
+    return response.data;
+  },
 };

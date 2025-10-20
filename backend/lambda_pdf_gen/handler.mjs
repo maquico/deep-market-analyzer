@@ -329,8 +329,15 @@ export const handler = async (event) => {
     // 1) Construcción del HTML
     console.log('Generando HTML...');
     const contentHtml = generateHtml({ html, markdown, template, data });
-    const pageHtml = wrapInHtmlPage(contentHtml);
-
+    let pageHtml;
+    if (!html) {
+      console.log('HTML generado a partir de markdown/template.');
+      pageHtml = wrapInHtmlPage(contentHtml);
+    } else {
+      console.log('Usando HTML proporcionado directamente.');
+      pageHtml = contentHtml;
+    }
+    
     // 2) Generar PDF
     console.log('Generando PDF...');
     const pdfBuffer = await generatePdfFromHtml(pageHtml, pdfOptions);

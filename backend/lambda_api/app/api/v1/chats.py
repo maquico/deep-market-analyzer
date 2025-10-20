@@ -55,7 +55,7 @@ def get_chat(chat_id: str):
                     IndexName="chat_id-index",
                     KeyConditionExpression=Key('chat_id').eq(chat_id)
                 )
-                print(msg_response.get("Items", []))
+                # print(msg_response.get("Items", []))
                 messages = [ChatMessage(**msg) for msg in msg_response.get("Items", [])]
                 item["messages"] = messages
             return Chat(**item)
@@ -119,3 +119,35 @@ def delete_chat(chat_id: str):
         raise HTTPException(status_code=500, detail=ERROR_DELETE_CHAT)
     
 
+@router.patch("/{chat_id}", response_model=Chat, tags=["chats"])
+def update_chat_name(chat_id: str, chat_name: str):
+    """Actualizar el nombre de un chat"""
+    if chats_table is None:
+        raise HTTPException(status_code=500, detail=ERROR_TABLE_NOT_CONFIGURED)
+    
+    try:
+        # Verificar que el chat existe
+        response = chats_table.get_item(Key={"chat_id": chat_id})
+        if not response.get("Item"):
+            raise HTTPException(status_code=404, detail=ERROR_CHAT_NOT_FOUND)
+        
+        # Actualizar el nombre del chat
+        update_response = chats_table.update_item(
+            Key={"chat_id": chat_id},
+            UpdateExpression="SET chat_name = :name, updated_at = :updated",
+            ExpressionAttributeValues={
+                ":name": chat_name,
+                ":updated": datetime.datetime.now().isoformat()
+            },
+            ReturnValues="ALL_NEW"
+        )
+        
+        updated_chat = update_response.get("Attributes")
+        updated_chat["messages"] = []
+        return Chat(**updated_chat)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al actualizar el chat: {e}")
+        raise HTTPException(status_code=500, detail="Error al actualizar el chat")

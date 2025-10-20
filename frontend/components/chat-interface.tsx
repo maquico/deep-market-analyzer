@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import Link from "next/link"
 import { useChats } from "@/hooks/use-chats"
+import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { ImageGallery } from "@/components/image-gallery"
 
 export function ChatInterface() {
   const {
@@ -22,6 +24,7 @@ export function ChatInterface() {
     createNewChat,
     sendMessage,
     deleteChat,
+    updateChatName,
     switchToChat,
     clearError,
   } = useChats();
@@ -32,6 +35,9 @@ export function ChatInterface() {
   const [isCreateChatDialogOpen, setIsCreateChatDialogOpen] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [editingChatName, setEditingChatName] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSendMessage = useCallback(async () => {
     if (!inputMessage.trim() || sending) return;
@@ -86,11 +92,59 @@ export function ChatInterface() {
     }
   }, [deleteChat]);
 
+  const handleEditChatName = useCallback((chatId: string, currentName: string) => {
+    setEditingChatId(chatId);
+    setEditingChatName(currentName);
+  }, []);
+
+  const handleSaveChatName = useCallback(async () => {
+    if (!editingChatId || !editingChatName.trim()) return;
+    
+    try {
+      await updateChatName(editingChatId, editingChatName.trim());
+      setEditingChatId(null);
+      setEditingChatName("");
+    } catch (error) {
+      console.error("Error updating chat name:", error);
+    }
+  }, [editingChatId, editingChatName, updateChatName]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingChatId(null);
+    setEditingChatName("");
+  }, []);
+
   const filteredChats = chats.filter((chat) => 
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Helper function to get message content
+  const getMessageContent = useCallback((message: any) => {
+    return message.content;
+  }, []);
+
   const currentChat = chats.find(chat => chat.id === activeChat);
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  // Scroll to bottom when messages change or when sending
+  useLayoutEffect(() => {
+    scrollToBottom();
+  }, [messages, sending, scrollToBottom]);
+
+  // Additional effect to ensure smooth scrolling during streaming
+  useEffect(() => {
+    if (sending) {
+      const interval = setInterval(() => {
+        scrollToBottom();
+      }, 100); // Scroll every 100ms while sending
+      
+      return () => clearInterval(interval);
+    }
+  }, [sending, scrollToBottom]);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -225,41 +279,87 @@ export function ChatInterface() {
                     className={`group p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
                       activeChat === chat.id ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
                     }`}
-                    onClick={() => switchToChat(chat.id)}
+                    onClick={() => editingChatId !== chat.id && switchToChat(chat.id)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm text-sidebar-foreground truncate">{chat.name}</h3>
-                        <p className="text-xs text-muted-foreground truncate mt-1">{chat.lastMessage}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{chat.timestamp}</p>
+                        {editingChatId === chat.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editingChatName}
+                              onChange={(e) => setEditingChatName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleSaveChatName();
+                                } else if (e.key === "Escape") {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              className="text-sm"
+                              autoFocus
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSaveChatName}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEdit}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <h3 className="font-medium text-sm text-sidebar-foreground truncate">{chat.name}</h3>
+                            <p className="text-xs text-muted-foreground truncate mt-1">{chat.lastMessage}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{chat.timestamp}</p>
+                          </>
+                        )}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover border-border">
-                          <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
-                            <Edit2 className="w-4 h-4 mr-2" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteChat(chat.id);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {editingChatId !== chat.id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem 
+                              className="text-popover-foreground hover:bg-accent"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditChatName(chat.id, chat.name);
+                              }}
+                            >
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteChat(chat.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 ))
@@ -321,16 +421,78 @@ export function ChatInterface() {
                             : "bg-card text-card-foreground border border-border"
                         }`}
                       >
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
+                        {message.role === "user" ? (
+                          <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
+                        ) : (
+                          <div>
+                            <MarkdownRenderer 
+                              content={getMessageContent(message)} 
+                              className={message.role === "assistant" ? "prose-sm" : ""}
+                            />
+                            {/* Debug info - only show for assistant messages during development */}
+                            {message.id.startsWith('assistant-') && process.env.NODE_ENV === 'development' && (
+                              <div className="text-xs text-muted-foreground mt-1 opacity-50">
+                                Length: {getMessageContent(message).length} chars | ID: {message.id.slice(-8)} | Sending: {sending}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
-                        {message.hasDownload && (
+                        {/* Show images if available */}
+                        {message.images && message.images.length > 0 && (
+                          <div className="mt-4 space-y-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <span className="text-lg">🖼️</span>
+                              <span className="font-medium">Generated Images ({message.images.length})</span>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {message.images.map((img, index) => (
+                                <div key={img.image_id || index} className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+                                  <div 
+                                    className="relative cursor-pointer group"
+                                    onClick={() => window.open(img.presigned_url, '_blank')}
+                                  >
+                                    <img 
+                                      src={img.presigned_url} 
+                                      alt={img.description || `Generated image ${index + 1}`}
+                                      className="w-full h-64 object-cover hover:opacity-95 transition-opacity"
+                                      onError={(e) => {
+                                        console.error('🖼️ Error loading image:', img.presigned_url);
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                    
+                                    {/* Overlay with actions */}
+                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                      <div className="bg-white/90 text-black px-3 py-1 rounded-md text-sm font-medium">
+                                        Click para ver imagen completa
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Description */}
+                                  <div className="p-4">
+                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                      {img.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {message.hasDownload && message.downloadLink && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="mt-3 bg-background/50 hover:bg-background border-border"
+                            onClick={() => window.open(message.downloadLink, '_blank')}
                           >
                             <Download className="w-4 h-4 mr-2" />
-                            Download Research (PDF)
+                            Descargar Reporte (PDF)
                           </Button>
                         )}
                       </div>
@@ -356,15 +518,17 @@ export function ChatInterface() {
               {sending && (
                 <div className="flex items-start gap-3 w-full justify-start">
                   <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 animate-pulse" />
                   </div>
                   <div className="max-w-[75%] md:max-w-[70%]">
                     <div className="bg-card text-card-foreground border border-border rounded-lg p-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        <span className="text-sm text-muted-foreground ml-2">Analyzing your request...</span>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          Analyzing your request...
+                        </span>
                       </div>
                     </div>
                     <div className="flex justify-end mt-1 ml-1">
@@ -373,6 +537,8 @@ export function ChatInterface() {
                   </div>
                 </div>
               )}
+              {/* Invisible element to scroll to */}
+              <div ref={messagesEndRef} />
             </div>
           </div>
         </div>

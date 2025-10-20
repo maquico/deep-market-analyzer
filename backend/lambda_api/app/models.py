@@ -42,13 +42,16 @@ class User(BaseModel):
     created_at: str
     username: str
 
-class Document(BaseModel):
-    document_id: str
+class Image(BaseModel):
+    image_id: str
     chat_id: str
     user_id: str
-    name: str
-    s3_path: str
-    uploaded_at: str
+    s3_bucket: Optional[str] = None
+    s3_key: Optional[str] = None
+    description: Optional[str] = None
+    created_at: str
+    image_presigned_url: Optional[str] = None
+
 
 class MessageRequest(BaseModel):
     query: str
@@ -62,3 +65,11 @@ class MessageResponse(BaseModel):
     success: bool
     user_id: Optional[str] = None
     message_id: Optional[str] = None
+
+class Document(BaseModel):
+    document_id: str
+    chat_id: str
+    user_id: str
+    s3_key: Optional[str] = None
+    created_at: Optional[str] = None
+    pdf_presigned_url: Optional[str] = None
